@@ -121,8 +121,10 @@
       <button id="privateKeyButton" class="menuBarButton" type="button">Enter Private Key</button>
       <button id="loadAddrFileButton" class="menuBarButton" type="button">Load Address File</button>
       <button id="setFiltersButton" class="menuBarButton" type="button">Set Filters</button>
-      <button id="composeButton" class="menuBarButton" type="button">Send Test Message</button>
-      <textarea id="addrCountArea" rows="1" cols="30" readonly="readonly" disabled="disabled">Number of addresses: 0</textarea>
+      <button id="sendButton" class="menuBarButton" type="button">Send to Recipients</button>
+    </div>
+    <div id="statusLineDiv" style="clear:both">
+      <textarea id="statusLine" rows="1" readonly="readonly" disabled="disabled"></textarea>
     </div>
 
     <!-- list display area -->
@@ -132,7 +134,8 @@
 	<textarea id="addrListHeaderAddr" class="addrListAddrArea" rows="1" readonly="readonly" disabled="disabled">Address</textarea>
 	<textarea id="addrListHeaderValid" class="addrListValidArea" rows="1" readonly="readonly" disabled="disabled">Valid</textarea>
 	<textarea id="addrListHeaderFee" class="addrListFeeArea" rows="1" readonly="readonly" disabled="disabled">Fee</textarea>
-	<textarea id="addrListHeaderActivity" class="addrListSubjectArea" rows="1" readonly="readonly" disabled="disabled">Activity</textarea>
+	<textarea id="addrListHeaderActivity" class="addrListActivityArea" rows="1" readonly="readonly" disabled="disabled">Activity</textarea>
+	<textarea id="addrListHeaderSend" class="addrListSendArea" rows="1" readonly="readonly" disabled="disabled">Send to this recipient?</textarea>
       </div>
       <div id="addrListDiv">
       </div>
@@ -153,7 +156,6 @@
 	    <textarea id="msgIdArea" rows="1" class="hidden">&nbsp;</textarea>
 	    <button id="msgRefButton" type="button" class="msgInfoAreaButton hidden">Ref: N/A</button>
 	    <textarea id="msgDateArea" rows="1" class="hidden">&nbsp;</textarea>
-	    <button id="validateAddrButton" type="button" class="hidden">Validate</button>
 	    <button id="replyButton" type="button" class="msgInfoAreaButton hidden">Reply</button>
 	    <textarea id="msgFeeArea" rows="1" readonly="readonly" disabled="disabled" class="hidden">&nbsp;</textarea>
 	  </span>

@@ -22,6 +22,8 @@ const mtUtil = module.exports = {
 
 
     extractSubject: function(message, maxLen) {
+	if (!message)
+	    return('');
 	if (message.startsWith('Subject: '))
 	    message = message.substring(9);
 	let newlineIdx = (message.indexOf('\n') > 0) ? message.indexOf('\n') :  message.length;
@@ -66,7 +68,7 @@ const mtUtil = module.exports = {
     getAndParseIdMsg: function(msgId, cb) {
 	console.log('getAndParseIdMsg: enter msgId = ' + msgId);
 	const options = {
-	    fromBlock: 0,
+	    fromBlock: mtEther.firstBlock,
 	    toBlock: 'latest',
 	    address: mtEther.EMT_CONTRACT_ADDR,
 	    topics: [mtEther.getMessageEventTopic0(), msgId ]
@@ -92,7 +94,7 @@ const mtUtil = module.exports = {
     getAndParseIdMsgs: function(msgIds, msgCookies, msgCb, doneCb) {
 	console.log('getAndParseIdMsgs: enter msgIds = ' + msgIds.toString());
 	const options = {
-	    fromBlock: 0,
+	    fromBlock: mtEther.firstBlock,
 	    toBlock: 'latest',
 	    address: mtEther.EMT_CONTRACT_ADDR,
 	    topics: [ mtEther.getMessageEventTopic0() ]
@@ -173,7 +175,7 @@ const mtUtil = module.exports = {
     },
 
 
-    // cb(err, msgFee, encrypted)
+    // cb(err, msgFee, encrypted, msgNoBN)
     encryptMsg: function(toAddr, message, cb) {
 	console.log('encryptMsg');
 	mtEther.accountQuery(toAddr, function(err, toAcctInfo) {
@@ -196,7 +198,7 @@ const mtUtil = module.exports = {
 	    mtEther.getPeerMessageCount(toAddr, common.web3.eth.accounts[0], function(err, msgCount) {
 		console.log('encryptMsg: ' + msgCount.toString(10) + ' messages have been sent from ' + toAddr + ' to me');
 		const msgFee = (msgCount > 0) ? toAcctInfo.msgFee : toAcctInfo.spamFee;
-		cb(null, msgFee, encrypted);
+		cb(null, msgFee, encrypted, sentMsgCtrBN);
 	    });
 	});
     },

@@ -23,9 +23,12 @@ const index = module.exports = {
     addrList: [],
     addrListElems: [],
     validAddrs: [],
+    recipients: [],
     filterFeeBN: null,
     filterActivity: null,
     filterRequireENS: false,
+    noAddrsMsg: null,
+    totalFeesBN: null,
 
     main: function() {
 	setMainButtonHandlers();
@@ -37,19 +40,20 @@ const index = module.exports = {
 function AddrInfo(idx, addr) {
     this.idx = idx;
     this.addr = addr;
-    this.fee = null;
+    this.feeBN = null;
     this.activity = null;
     this.ensName = null;
     this.valid = null;
 }
 
-function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, addrNo) {
+function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, sendArea, addrNo) {
     this.div = div;
     this.addrNoArea = addrNoArea;
     this.addrArea = addrArea;
     this.validArea = validArea;
     this.feeArea = feeArea;
     this.activityArea = activityArea;
+    this.sendArea = sendArea;
     this.addrNo = addrNo;
     this.elemIdx = -1;
     this.Address = null;
@@ -78,14 +82,10 @@ function displayContents(contents) {
 
 
 function setMainButtonHandlers() {
-    console.log('setMainButtonHandlers');
-    document.getElementById('composeButton').addEventListener('click', function() {
-	if (!!mtUtil.acctInfo)
-	    handleCompose(mtUtil.acctInfo, '');
-    });
     //
     // private key
     //
+    console.log('setMainButtonHandlers');
     document.getElementById('privateKeyButton').addEventListener('click', function() {
 	document.getElementById('privateKeyInput').value = '';
 	document.getElementById('privateKeyInput').placeholder = (!!index.privateKey)
@@ -113,6 +113,9 @@ function setMainButtonHandlers() {
 		    index.privateKey = key;
 		    common.replaceElemClassFromTo('privateKeyDiv', 'visibleB', 'hidden', true);
 		    document.getElementById('privateKeyButton').innerHTML = 'Private Key&nbsp;&nbsp;<i class="material-icons">done</i>';
+		    common.setMenuButtonState('loadAddrFileButton', 'Enabled');
+		    const msg = (index.addrList.length > 0) ? index.noAddrsMsg : 'You need to load an address file...';
+		    showStatus(msg);
 		}
 	    });
 	}
@@ -146,12 +149,17 @@ function setMainButtonHandlers() {
 		index.addrList = [];
 		index.addrListElems = [];
 		index.validAddrs = [];
+		index.recipients = [];
 		common.clearDivChildren(document.getElementById('addrListDiv'));
 		parseAddrs(e.target.result, 0, () => {
 		    document.getElementById('loadAddrFileButton').innerHTML = 'Address File&nbsp;&nbsp;<i class="material-icons">done</i>';
 		    populateAddrList(0);
 		    fillAddrInfoNext(0, () => {
-			document.getElementById('addrCountArea').textContent = 'valid addresses: ' + index.validAddrs.length.toString(10);
+			common.setMenuButtonState('setFiltersButton', 'Enabled');
+			index.noAddrsMsg = 'number of addresses: ' + index.addrList.length.toString(10) + ' (' + index.validAddrs.length.toString(10) + ' valid)';
+			document.getElementById('setFiltersButton').innerHTML = 'Set Filters';
+			showStatus(index.noAddrsMsg + ' | you must set filters');
+			//document.getElementById('addrCountArea').textContent = 'valid addresses: ' + ;
 		    });
 		});
             };
@@ -194,23 +202,21 @@ function setMainButtonHandlers() {
 	console.log('filter requireENS = ' + requireENS);
 	index.filterRequireENS = requireENS;
 	document.getElementById('setFiltersButton').innerHTML = 'Set Filters&nbsp;&nbsp;<i class="material-icons">done</i>';
+	showStatus(index.noAddrsMsg + ' | filters set');
 	common.replaceElemClassFromTo('filtersDiv', 'visibleB', 'hidden', true);
+	findRecipients(() => initMsgArea(true));
     });
     //
+    // send
     //
-
-    const replyButton = document.getElementById('replyButton');
-    replyButton.addEventListener('click', function() {
-	console.log('replyButton');
-	const composeButton = document.getElementById('composeButton');
-	const viewRecvButton = document.getElementById('viewRecvButton');
-	const viewSentButton = document.getElementById('viewSentButton');
-	const msgTextArea = document.getElementById('msgTextArea');
-	let message = msgTextArea.value;
-	replyButton.disabled = true;
-	msgTextArea.disabled = true;
-	msgAddrArea.disabled = true;
-	//
+    document.getElementById('sendButton').addEventListener('click', function() {
+	document.getElementById('msgTextArea').disabled = true;
+	document.getElementById('attachmentButton').disabled = true;
+	common.setMenuButtonState('privateKeyButton',   'Disabled');
+	common.setMenuButtonState('loadAddrFileButton', 'Disabled');
+	common.setMenuButtonState('setFiltersButton',   'Disabled');
+	common.setMenuButtonState('sendButton',         'Disabled');
+	let message = document.getElementById('msgTextArea').value;
 	let attachmentIdxBN;
 	const attachmentSaveA = document.getElementById('attachmentSaveA');
 	console.log('replyButton: attachmentSaveA.href = ' + attachmentSaveA.href + ', attachmentSaveA.download = ' + attachmentSaveA.download);
@@ -224,38 +230,13 @@ function setMainButtonHandlers() {
 	    console.log('replyButton: message = ' + message);
 	}
 	//
-	let toAddr = "0xf84e459C7e3bea1EC0814cE1a345CCcB88Ab56c2";
-	if (toAddr.indexOf('(') >= 0) {
-	    //for ens names, actual, complete addr is beween parens
-	    toAddr = msgAddrArea.value.replace(/[^\(]*\(([^]*)\).*/, "$1");
-	    console.log('replyButton: toAddr = ' + toAddr);
-	}
-	//the toAddr has already been validated. really.
-	mtUtil.encryptMsg(toAddr, message, function(err, msgFee, encrypted) {
-	    if (!!err) {
-		alert(err);
-		handleUnlockedMetaMask(null);
-		return;
-	    }
-	    //see how many messages have been sent from the proposed recipient to me
-	    const msgFeeArea = document.getElementById('msgFeeArea');
-	    msgFeeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(common.numberToBN(msgFee));
-	    const msgRefButton = document.getElementById('msgRefButton');
-	    const ref = msgRefButton.ref;
-	    const msgNo = mtUtil.acctInfo.sentMsgCount + 1;
-	    const privateKey = "9d3be32ce67dc2c4b9f0394dd28ecee9839990958adb9ec543054c6523327d30";
-	    const gasLimit = 0;
-	    const gasPrice = "10";
-	    mtEther.sendMessagePK(privateKey, toAddr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPrice, function(err, txid) {
-		console.log('txid = ' + txid);
-		const continueFcn = () => {
-		    common.waitingForTxid = false;
-		    common.clearStatusDiv();
-		    index.sentMessageNo = msgNo;
-		    handleViewSent(true);
-		};
-		common.waitForTXID(err, txid, 'Send-Message', continueFcn, ether.etherscanioTxStatusHost, null);
-	    });
+	sendRecipients(0, message, attachmentIdxBN, function() {
+	    document.getElementById('msgTextArea').disabled = false;
+	    document.getElementById('attachmentButton').disabled = false;
+	    common.setMenuButtonState('privateKeyButton',   'Enabled');
+	    common.setMenuButtonState('loadAddrFileButton', 'Enabled');
+	    common.setMenuButtonState('setFiltersButton',   'Enabled');
+	    common.setMenuButtonState('sendButton',         'Enabled');
 	});
     });
     //
@@ -273,6 +254,10 @@ function setMainButtonHandlers() {
 // mode = [ 'startup' | 'send' | 'recv' | null ]
 //
 async function beginTheBeguine(mode) {
+    common.setMenuButtonState('privateKeyButton',   'Disabled');
+    common.setMenuButtonState('loadAddrFileButton', 'Disabled');
+    common.setMenuButtonState('setFiltersButton',   'Disabled');
+    common.setMenuButtonState('sendButton',         'Disabled');
     common.checkForMetaMask(true, function(err, w3) {
 	const acct = (!err && !!w3) ? w3.eth.accounts[0] : null;
 	index.account = acct;
@@ -281,7 +266,6 @@ async function beginTheBeguine(mode) {
 	    handleLockedMetaMask(err);
 	} else {
 	    console.log('beginTheBeguine: checkForMetaMask acct = ' + acct);
-	    common.setMenuButtonState('composeButton',       'Disabled');
 	    handleUnlockedMetaMask(mode);
 	}
     });
@@ -293,7 +277,7 @@ async function beginTheBeguine(mode) {
 //
 function handleLockedMetaMask(err) {
     console.log('handleLockedMetaMask: err = ' + err);
-    common.setMenuButtonState('composeButton', 'Disabled');
+    common.setMenuButtonState('sendButton', 'Disabled');
     const networkArea = document.getElementById('networkArea');
     networkArea.value = '';
     const accountArea = document.getElementById('accountArea');
@@ -374,7 +358,7 @@ function handleUnlockedMetaMask(mode) {
 // handle unregistered account
 //
 function handleUnregisteredAcct() {
-    common.setMenuButtonState('composeButton',       'Disabled');
+    common.setMenuButtonState('sendButton', 'Disabled');
     const totalReceivedArea = document.getElementById('totalReceivedArea');
     totalReceivedArea.value = 'This Ethereum address is not registered';
     const feeBalanceArea = document.getElementById('feeBalanceArea');
@@ -399,7 +383,6 @@ function handleRegisteredAcct(mode) {
     console.log('handleRegisteredAcct');
     if (!!mode && !!dhcrypt.dh && mtUtil.publicKey == dhcrypt.publicKey()) {
 	displayFeesAndMsgCnt();
-	common.setMenuButtonState('composeButton', 'Enabled');
     } else {
 	//prevent reloading while we're waiting for signature
 	common.waitingForTxid = true;
@@ -409,8 +392,12 @@ function handleRegisteredAcct(mode) {
 	    common.waitingForTxid = false;
 	    common.showWaitingForMetaMask(false);
 	    if (!err) {
-		displayFeesAndMsgCnt();
-		common.setMenuButtonState('composeButton', 'Enabled');
+		initMsgArea(false);
+		showStatus('Begin by entering your private key...');
+		common.setMenuButtonState('privateKeyButton',   'Enabled');
+		common.setMenuButtonState('loadAddrFileButton', 'Disabled');
+		common.setMenuButtonState('setFiltersButton',   'Disabled');
+		common.setMenuButtonState('sendButton',         'Disabled');
 	    }
 	});
     }
@@ -418,11 +405,10 @@ function handleRegisteredAcct(mode) {
 
 
 //
-// handle Compose button
+// initMsgArea(enable)
 //
-function handleCompose() {
-    common.setMenuButtonState('composeButton',       'Selected');
-    //
+function initMsgArea(enable) {
+    console.log('initMsgArea');
     if (index.elemIdx >= 0) {
 	//unselect any currently selected message
 	const msgElem = index.msgListElems[index.elemIdx];
@@ -444,7 +430,6 @@ function handleCompose() {
     common.replaceElemClassFromTo('msgIdArea',          'visibleTC', 'hidden',    true);
     common.replaceElemClassFromTo('msgRefButton',       'visibleTC', 'hidden',    true).textContent = '';
     common.replaceElemClassFromTo('msgDateArea',        'visibleTC', 'hidden',    true);
-    common.replaceElemClassFromTo('validateAddrButton', 'hidden',    'visibleTC', false);
     common.replaceElemClassFromTo('msgFeeArea',         'hidden',    'visibleTC', true).value = 'Fee: ';
     common.replaceElemClassFromTo('replyButton',        'hidden',    'visibleTC', true).textContent = 'Send';
     common.replaceElemClassFromTo('attachmentButton',   'hidden',    'visibleIB', false);
@@ -456,16 +441,16 @@ function handleCompose() {
     //
     const msgRefButton = document.getElementById('msgRefButton');
     msgRefButton.ref = '0';
-    //textarea will be enabled after addr is validated
     const msgTextArea = document.getElementById('msgTextArea');
     msgTextArea.className = (msgTextArea.className).replace('hidden', 'visibleIB');
-    msgTextArea.disabled = false;
+    msgTextArea.disabled = enable ? false : true;
     msgTextArea.readonly = "";
     const replyButton = document.getElementById('replyButton');
-    replyButton.disabled = false;
+    replyButton.disabled = enable ? false : true;
     msgTextArea.value = 'Subject: ';
     const attachmentButton = document.getElementById('attachmentButton');
-    attachmentButton.disabled = false;
+    attachmentButton.disabled = enable ? false : true;
+    common.setMenuButtonState('sendButton', enable ? 'Enabled' : 'Disabled');
     //in case user erases subject...
     msgTextArea.placeholder='Type your message here...';
     const statusDiv = document.getElementById('statusDiv');
@@ -479,6 +464,7 @@ function handleCompose() {
 //
 function parseAddrs(addrList, endIdx, cb) {
     console.log('parseAddrs: index.addrList.length = ' + index.addrList.length + ', endIdx = ' + endIdx);
+    showStatus('loading addresses: ' + index.addrList.length.toString(10));
     const addrIdx = addrList.indexOf('0x', endIdx)
     if (addrIdx < 0) {
 	cb();
@@ -501,6 +487,7 @@ function fillAddrInfoNext(idx, cb) {
     if (idx >= index.addrList.length) {
 	cb();
     } else {
+	showStatus('checking address: ' + idx.toString(10) + ' of ' + (index.addrList.length - 1).toString(10));
 	const addrInfo = index.addrList[idx];
 	fillAddrInfo(addrInfo, () => {
 	    setTimeout(fillAddrInfoNext, 750, idx + 1, cb);
@@ -519,13 +506,14 @@ function fillAddrInfo(addrInfo, cb) {
 	    const elem = index.addrListElems[addrInfo.idx];
 	    elem.validArea.value = (addrInfo.valid) ? 'valid' : 'invalid';
 	    if (addrInfo.valid) {
-		elem.feeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(common.numberToBN(addrInfo.fee));
+		elem.feeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(addrInfo.feeBN);
 		elem.activityArea.value = addrInfo.activity.toString(10) + ' messages sent';
 		index.validAddrs.push(addrInfo.idx);
+	    } else {
+		elem.sendArea.value = 'no -- address is not registered';
 	    }
 	}
     }
-    document.getElementById('addrCountArea').textContent = 'checking address ' + addrInfo.idx.toString(10);
     ether.ensReverseLookup(addrInfo.addr, function(err, name) {
 	if (!err && !!name)
 	    addrInfo.ensName = name;
@@ -535,7 +523,7 @@ function fillAddrInfo(addrInfo, cb) {
 		addrInfo.activity = acctInfo.sentMsgCount;
 		mtEther.getPeerMessageCount(addrInfo.addr, common.web3.eth.accounts[0], function(err, msgCount) {
 		    console.log(msgCount.toString(10) + ' messages have been sent from ' + addrInfo.addr + ' to me');
-		    addrInfo.fee = (msgCount > 0) ? acctInfo.msgFee : acctInfo.spamFee;
+		    addrInfo.feeBN = common.numberToBN((msgCount > 0) ? acctInfo.msgFee : acctInfo.spamFee);
 		    fillFcn(addrInfo);
 		    cb();
 		});
@@ -588,7 +576,7 @@ function populateAddrList(minAddrIdx) {
 function makeAddrListElem(elemIdx) {
     console.log('makeAddrListElem');
     const addrInfo = index.addrList[elemIdx];
-    let div, addrNoArea, addrArea, feeArea, activityArea;
+    let div, addrNoArea, addrArea, feeArea, activityArea, sendArea;
     div = document.createElement("div");
     div.className = 'addrListItemDiv';
     addrNoArea = document.createElement("textarea");
@@ -621,12 +609,19 @@ function makeAddrListElem(elemIdx) {
     activityArea.readonly = 'readonly';
     activityArea.disabled = 'disabled';
     activityArea.value = '';
+    sendArea = document.createElement("textarea");
+    sendArea.className = 'addrListSendArea notBlinking';
+    sendArea.rows = 1;
+    sendArea.readonly = 'readonly';
+    sendArea.disabled = 'disabled';
+    sendArea.value = '';
     div.appendChild(addrNoArea);
     div.appendChild(addrArea);
     div.appendChild(validArea);
     div.appendChild(feeArea);
     div.appendChild(activityArea);
-    const addrElem = new AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, elemIdx);
+    div.appendChild(sendArea);
+    const addrElem = new AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, sendArea, elemIdx);
     /*
     div.addEventListener('click', function() {
 	const message = msgElem.message;
@@ -646,6 +641,87 @@ function makeAddrListElem(elemIdx) {
     });
     */
     return(addrElem);
+}
+
+
+//
+// findRecipients(cb)
+// find recipients from addrList based on filters
+//
+function findRecipients(cb) {
+    index.recipients = [];
+    index.totalFeesBN = new BN(0);
+    for (let validIdx = 0; validIdx < index.validAddrs.length; ++validIdx) {
+	const idx = index.validAddrs[validIdx];
+	const addrInfo = index.addrList[idx];
+	showStatus(index.noAddrsMsg + ' | filters set | checking recipients: address: ' + idx.toString(10));
+	index.totalFeesBN.iadd(addrInfo.feeBN);
+	const elem = index.addrListElems[addrInfo.idx];
+	elem.sendArea.value = 'yes';
+	index.recipients.push(idx);
+    }
+    const feeMsg = 'Total Fees: ' + ether.convertWeiBNToComfort(index.totalFeesBN);
+    showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + feeMsg);
+    cb();
+}
+
+
+//
+// send message to all recipients
+// message already includes any attachment
+//
+function sendRecipients(idx, message, attachmentIdxBN, cb) {
+    const totalFeesMsg = 'Total Fees: ' + ether.convertWeiBNToComfort(index.totalFeesBN);
+    if (idx >= index.recipients.length) {
+	const sentMsg = 'sent to ' + index.recipients.length.toString(10) + ' recipients';
+	showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + totalFeesMsg + ' | ' + sentMsg);
+	cb();
+	return;
+    }
+    const recipientIdx = index.recipients[idx];
+    const addrInfo = index.addrList[recipientIdx];
+    const sendingMsg = 'sending to ' + addrInfo.idx.toString(10);
+    showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + totalFeesMsg + ' | ' + sendingMsg);
+    //
+    document.getElementById('msgAddrArea').value = addrInfo.addr;
+    const elem = index.addrListElems[addrInfo.idx];
+    elem.sendArea.value = 'now sending!';
+    common.replaceClassFromTo(elem.sendArea, 'notBlinking', 'blinking', true);
+    mtUtil.encryptMsg(addrInfo.addr, message, function(err, msgFee, encrypted, msgNoBN) {
+	if (!!err) {
+	    alert(err);
+	    handleUnlockedMetaMask(null);
+	    return;
+	}
+	document.getElementById('msgFeeArea').value = 'Fee: ' + ether.convertWeiBNToComfort(common.numberToBN(msgFee));
+	const msgRefButton = document.getElementById('msgRefButton');
+	const ref = '0';
+	const gasLimit = 0;
+	const gasPrice = "20";
+	mtEther.sendMessagePK(index.privateKey, addrInfo.addr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPrice, function(err, txid) {
+	    console.log('txid = ' + txid);
+	    const cbFcn = (err, receipt) => {
+		console.log('waitForTXID cb: err = ' + err + ', receipt = ' + (!!receipt ? JSON.stringify(receipt) : ' null'));
+		if (!!err) {
+		    elem.sendArea.value = 'send error!';
+		} else {
+		    mtUtil.acctInfo.sentMsgCount = msgNoBN.toString(10);
+		    elem.sendArea.value = 'sent!';
+		    common.replaceClassFromTo(elem.sendArea, 'blinking', 'notBlinking', true);
+		}
+		common.waitingForTxid = false;
+		common.clearStatusDiv();
+		console.log('waitForTXID cb: mtUtil.acctInfo.sentMsgCount = ' + mtUtil.acctInfo.sentMsgCount);
+		sendRecipients(idx + 1, message, attachmentIdxBN, cb);
+	    };
+	    common.waitForTXID(err, txid, 'Send-Message', null, ether.etherscanioTxStatusHost, cbFcn);
+	});
+    });
+}
+
+
+function showStatus(statusMsg) {
+    document.getElementById('statusLine').value = 'status: ' + statusMsg;
 }
 
 

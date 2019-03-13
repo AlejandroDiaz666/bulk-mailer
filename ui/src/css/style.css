@@ -48,6 +48,22 @@ p {
     background-color: #9cd9db;
 }
 
+
+.notBlinking {
+}
+.blinking {
+    animation: blinkingText 0.8s infinite;
+}
+@keyframes blinkingText {
+    0%   { color: #000;        }
+    49%  { color: transparent; }
+    50%  { color: transparent; }
+    99%  { color: transparent;  }
+    100% { color: #000;        }
+}
+
+
+
 .modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
@@ -427,6 +443,22 @@ p {
     color: var(--clr_areatext);
 }
 
+#statusLineDiv {
+    display: block;
+    font-family: 'Lato', sans-serif;
+    background-color: var(--clr_areabg1);
+    margin: 5px;
+    height: auto;
+    position: relative;
+    top: 0px;
+    left: 0px;
+}
+#statusLine {
+    margin: 5px;
+    width: 98%;
+    resize: none;
+}
+
 .msgInfoAreaButton {
     margin: 1px;
     border: var(--bor_butnormal);
@@ -455,13 +487,13 @@ p {
   by setting a transparent border where i would want a margin.
 */
 #listAreaDiv  {
-    padding: 12px;
-    margin: 0px;
+    padding: 14px;
+    margin: 5px;
     background-color: var(--clr_areabg1);
     border-collapse: collapse;
     color: var(--clr_areatext); /*yellow; */
-    width: 100%;
-    overflow-y: scroll;
+    width: 98%;
+    overflow-y: hidden;
     overflow-x: hidden;
 }
 #addrListDiv  {
@@ -498,7 +530,7 @@ p {
 #addrListHeaderSubject {
     margin-right: 1em;
 }
-.addrListAddrNoArea, .addrListAddrArea, .addrListValidArea, .addrListFeeArea, .addrListActivityArea {
+.addrListAddrNoArea, .addrListAddrArea, .addrListValidArea, .addrListFeeArea, .addrListActivityArea, .addrListSendArea {
     display: table-cell;
     vertical-align: middle;
     padding-top: 1px;
@@ -524,21 +556,24 @@ p {
     min-width: 8em;
 }
 .addrListFeeArea {
-    width: 24em;
-    min-width: 24em;
+    width: 12em;
+    min-width: 12em;
 }
 .addrListActivityArea {
     width: 20em;
     min-width: 20em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: hidden;
 }
-.addrListSubjectArea {
+.addrListSendArea {
     min-width: 20em;
     width: 100%;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: elipsis;
+    margin-right: 10px;
 }
-
 
 
 

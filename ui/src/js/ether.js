@@ -100,6 +100,7 @@ const ether = module.exports = {
 
 
     //numberAndUnits eg. 5 => { index: 0, multiplyer: 1, number: 5, units: 'Wei' }
+    //number will have 3 decimal places at most
     convertWeiBNToNumberAndUnits: function(weiBN) {
 	const numberAndUnits = {};
 	let multiplyer;

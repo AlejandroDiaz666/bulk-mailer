@@ -6,7 +6,6 @@ const common = require('./common');
 const ethUtils = require('ethereumjs-util');
 const ethtx = require('ethereumjs-tx');
 const ethabi = require('ethereumjs-abi');
-const web3Utils = require('web3-utils');
 const Buffer = require('buffer/').Buffer;
 const BN = require("bn.js");
 var ENS = require('ethereum-ens');

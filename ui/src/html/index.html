@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Message Transport Bulk Mailer</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+    <link href="https://fonts.googleapis.com/css?family=Lato:300|Roboto:300i" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Lato:100,100italic,300,300italic,italic,700,700italic,900,900italic,400" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" id="themedStyle" href="css/relax-style_TIMESTAMP__.css">
+    <script type="text/javascript" src="bundle/index_TIMESTAMP_1546159211_.js"></script>
+  </head>
+
+  <body>
+    <!--
+	modals: "you've received new messages", "Waiting for MetaMask signature", "Retrieving Messages"
+      -->
+    <div id="metaMaskDiv" class="metaMaskDivHide">
+      <p>Waiting for MetaMask signature...</p>
+    </div>
+    <div id="waitIcon">
+    </div>
+    <div id="privateKeyDiv" class="hidden">
+      <h3>Please Enter your Private Key</h3>
+      <p>In order to sign multiple messages -- without waiting for a seperate MetaMask signature for each message -- You need to provide a private key.</br>
+	Note that the private key <i>must</i> be the key for the currently selected MetaMask account.</p>
+      <p>Note: we never transmit or save your private key. We only use your key to confirm send-message transactions.</p>
+      <input id="privateKeyInput" type="text" class="modalInput" placeholder="Enter the private key for your acct"/>
+      <div id="privateKeyButtonsDiv">
+        <button id="privateKeySave" type="button" >Save</button>
+        <button id="privateKeyCancel" type="button" >Cancel</button>
+      </div>
+    </div>
+
+    <div id="loadAddrFileDiv" class="hidden">
+      <h3>Please Select an Address File</h3>
+      <p>The address file should be a plain text file containing a list of Ethereum addresses. The addresses can be
+	separated by commas, spaces, or newlines -- but each address must begin with a '0x', and there must not
+	be any other stray '0x' that does not prefix an address.</p>
+      <div id="loadAddrFileButtonsDiv">
+      <input id="loadAddrFileInput" type="file" name="filename"></input>
+      <button id="loadAddrFileCancel" type="button" >Cancel</button>
+      </div>
+    </div>
+
+    <div id="filtersDiv" class="hidden">
+      <h3>Please Set Filters to Eliminate Recipients (Optional)</h3>
+      <p>The mailer will only send to recipients that match the conditions set below:</p>
+      <ul>
+	<li>Maximum Fee: only recipients whose fee is less than or equal to the specified value</li>
+	<input id="filterFeeInput" class="modalInput" type="text" placeholder="max fee"/>
+	<select id="filterFeeUnits">
+	  <option value="1">Wei</option>
+	  <option value="1000">Kwei</option>
+	  <option value="1000000">Mwei</option>
+	  <option value="1000000000">Gwei</option>
+	  <option value="1000000000000">Szabo</option>
+	  <option value="1000000000000000">Finney</option>
+	</select><br/>
+	<li>Minimum Activity: only recipients who have <i>sent</i> the specified number of messages</li>
+	<input id="filterActivityInput" type="text" class="modalInput" placeholder="min activity"/><br/>
+	<li>Require ENS: only recipients who have set up a reverse ENS name for their address</li>
+	<input type="checkbox" id="filterRequireENS">Require ENS<br>
+      </ul>
+      <p>Using these filters you can limit the <b>Bulk Mailer for Turms Anonymous Message Transport</b> so that it only sends
+	to recipients who are most likely to read your message.</p>
+      <div id="filtersButtonsDiv">
+        <button id="filtersSave" type="button" >Save</button>
+	<button id="filtersCancel" type="button" >Cancel</button>
+      </div>
+    </div>
+
+    <div id="topSection">
+      <div style="float:left;">
+	<img id="logoImg" src="images/logo-trans.png" alt="Logo goes here "/>
+      </div>
+      <span id="mainTitleSpan">
+	<h2>Bulk Mailer for Turms&nbsp;Anonymous&nbsp;Message&nbsp;Transport</h2>
+      </span>
+      <div id="tabularArea">
+	<div id="networkAreaDiv">
+	  <textarea id="networkArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	</div>
+	<div id="accountDiv">
+	  <textarea id="accountArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	</div>
+	<div id="balanceAreaDiv">
+	  <textarea id="balanceArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	</div>
+	<div id="totalReceivedAreaDiv">
+	  <textarea id="totalReceivedArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	</div>
+	<div id="feeBalanceAreaDiv">
+	  <textarea id="feeBalanceArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	</div>
+      </div>
+      <!-- options panel -->
+      <div id="optionsButtonDiv">
+	<img id="optionsButton" src="images/options-icon.png">
+	<div id="optionsPanel" class="hidden">
+	  <button id="closeOptionsButton" class="menuBarButton" type="button">Close</button>
+	  <span id="themeSelectorSpan">
+	    <p>Select look:<br/>
+	    <input id="marysThemeButton" type="radio" name="themeSelectorInput" value="marys-style">Mary&apos;s theme</input><br/>
+	    <input id="wandasThemeButton" type="radio" name="themeSelectorInput" value="wandas-style">Wanda&apos;s theme</input><br/>
+	    <input id="relaxThemeButton" type="radio" name="themeSelectorInput" value="relax-style">Relax theme</input><br/>
+	    </p>
+	  </span>
+	  <span id="viewSrcSpan">
+	    <p>The source code for this utility is on:<br/>
+	      <a href="github.com">github</a>
+	    </p>
+	  </span>
+	  <textarea id="versionArea" rows="1" readonly="readonly" disabled="disabled">Build: unknown</textarea>
+	</div>
+      </div>
+    </div>
+
+    <div id="topMenuBarDiv" style="clear:both">
+      <button id="privateKeyButton" class="menuBarButton" type="button">Enter Private Key</button>
+      <button id="loadAddrFileButton" class="menuBarButton" type="button">Load Address File</button>
+      <button id="setFiltersButton" class="menuBarButton" type="button">Set Filters</button>
+      <button id="composeButton" class="menuBarButton" type="button">Send Test Message</button>
+      <textarea id="addrCountArea" rows="1" cols="30" readonly="readonly" disabled="disabled">Number of addresses: 0</textarea>
+    </div>
+
+    <!-- list display area -->
+    <div id="listAreaDiv">
+      <div id="addrListHeaderDiv" class="addrListItemDiv">
+	<textarea id="addrListHeaderAddrNo" class="addrListAddrNoArea" rows="1" readonly="readonly" disabled="disabled">Addr No.</textarea>
+	<textarea id="addrListHeaderAddr" class="addrListAddrArea" rows="1" readonly="readonly" disabled="disabled">Address</textarea>
+	<textarea id="addrListHeaderValid" class="addrListValidArea" rows="1" readonly="readonly" disabled="disabled">Valid</textarea>
+	<textarea id="addrListHeaderFee" class="addrListFeeArea" rows="1" readonly="readonly" disabled="disabled">Fee</textarea>
+	<textarea id="addrListHeaderActivity" class="addrListSubjectArea" rows="1" readonly="readonly" disabled="disabled">Activity</textarea>
+      </div>
+      <div id="addrListDiv">
+      </div>
+    </div>
+
+    <!-- general display area -->
+    <div id="msgAreaDiv" style="clear:both">
+      <form action="javascript:void(0);">
+	<a id="attachmentSaveA" style="display: none;"><span id="attachmentSaveSpan"></span></a>
+	<button id="attachmentButton" type="button" class="msgInfoAreaButton hidden">Attach</button>
+	<input id="attachmentInput" type="file" name="filename" class="hidden"></input>
+	<img id="deleteImg" src="images/delete.png"></img>
+	<div id="msgInfoAreaDiv">
+	  <span>
+	    <textarea id="msgPromptArea" rows="1" readonly="readonly" disabled="disabled">&nbsp;</textarea>
+	    <textarea id="msgAddrArea" rows="1"
+		      onkeyup="this.value=this.value.replace(/[(\n]/,'')" disabled="disabled">&nbsp;</textarea>
+	    <textarea id="msgIdArea" rows="1" class="hidden">&nbsp;</textarea>
+	    <button id="msgRefButton" type="button" class="msgInfoAreaButton hidden">Ref: N/A</button>
+	    <textarea id="msgDateArea" rows="1" class="hidden">&nbsp;</textarea>
+	    <button id="validateAddrButton" type="button" class="hidden">Validate</button>
+	    <button id="replyButton" type="button" class="msgInfoAreaButton hidden">Reply</button>
+	    <textarea id="msgFeeArea" rows="1" readonly="readonly" disabled="disabled" class="hidden">&nbsp;</textarea>
+	  </span>
+	</div>
+	<div id="msgTextAreaDiv">
+	  <textarea id="msgTextArea" rows="14" class="hidden">&nbsp;</textarea>
+	  <div id="registerDiv" class="hidden">
+	    <table class="registerTable">
+	      <tbody>
+		<tr>
+		  <td>Message fee:</td><td><input id="messageFeeInput" type="text"></td>
+		  <td><select id="messageFeeUnits">
+		      <option value="1">Wei</option>
+		      <option value="1000">Kwei</option>
+		      <option value="1000000">Mwei</option>
+		      <option value="1000000000">Gwei</option>
+		      <option value="1000000000000">Szabo</option>
+		      <option value="1000000000000000">Finney</option>
+		    </select>
+		  </td>
+		</tr>
+		<tr>
+		  <td>Spam fee:</td><td><input id="spamFeeInput" type="text"></td>
+		  <td><select id="spamFeeUnits">
+		      <option value="1">Wei</option>
+		      <option value="1000">Kwei</option>
+		      <option value="1000000">Mwei</option>
+		      <option value="1000000000">Gwei</option>
+		      <option value="1000000000000">Szabo</option>
+		      <option value="1000000000000000">Finney</option>
+		    </select>
+		  </td>
+		</tr>
+		<tr>
+		  <td></td><td><input id="registerSubmitButton" class="menubarButton" type="submit" value="Submit"></td>
+		</tr>
+	      </tbody>
+	    </table>
+	  </div>
+	</div>
+      </form>
+    </div>
+    <p>&nbsp;</p>
+    <div id="statusDiv" class="finalresultstable statusDivHide"></div>
+  </body>
+</html>

@@ -30,6 +30,7 @@ const index = module.exports = {
     filterRequireENS: false,
     noAddrsMsg: null,
     totalFeesBN: null,
+    elemIdx: -1,
 
     main: function() {
 	setOptionsButtonHandlers();
@@ -47,6 +48,7 @@ function AddrInfo(idx, addr) {
     this.activity = null;
     this.ensName = null;
     this.valid = null;
+    this.sendable = false;
 }
 
 function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, activityArea, sendArea, addrNo) {
@@ -60,8 +62,6 @@ function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, ac
     this.sendArea = sendArea;
     this.addrNo = addrNo;
     this.elemIdx = -1;
-    this.Address = null;
-    this.Status = null;
 }
 
 
@@ -676,20 +676,7 @@ function makeAddrListElem(elemIdx) {
     const addrElem = new AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, activityArea, sendArea, elemIdx);
     /*
     div.addEventListener('click', function() {
-	const message = msgElem.message;
-	if (!!message && message.msgNo > 0) {
-	    //re-establish View-Sent or View-Recv mode as appropriate, but no need to refresh the msg list since
-	    //by definition we are selecting a message from the current list
-	    const msgNoCounter = (index.listMode == 'recv') ? 'recvMessageNo' : 'sentMessageNo';
-	    const viewSentButton = document.getElementById('viewSentButton');
-	    const viewRecvButton = document.getElementById('viewRecvButton');
-	    index[msgNoCounter] = message.msgNo;
-	    if (index.listMode == 'recv' && viewRecvButton.className != 'menuBarButtonSelected')
-		handleViewRecv(false);
-	    else if (index.listMode == 'sent' && viewSentButton.className != 'menuBarButtonSelected')
-		handleViewSent(false);
-	    selectMsgListEntry(msgElem.elemIdx);
-	}
+    ...
     });
     */
     return(addrElem);
@@ -717,11 +704,12 @@ function findRecipients(cb) {
 	else if (!!index.filterRequireENS && !ensName)
 	    elem.sendArea.value = 'no -- does not have ENS name';
 	else {
+	    addrInfo.sendable = true;
 	    elem.sendArea.value = 'yes';
 	    index.totalFeesBN.iadd(addrInfo.feeBN);
 	    index.recipients.push(idx);
 	}
-	const newSuffix = (elem.sendArea.value == 'yes') ? 'Valid' : '';
+	const newSuffix = (addrInfo.sendable) ? 'Valid' : '';
 	elem.div.className = 'addrListItemDiv' + newSuffix;
     }
     const feeMsg = 'Total Fees: ' + ether.convertWeiBNToComfort(index.totalFeesBN);
@@ -731,7 +719,7 @@ function findRecipients(cb) {
 
 
 //
-// send message to all recipients
+// recursively send message to all recipients
 // message already includes any attachment
 //
 function sendRecipients(idx, message, attachmentIdxBN, cb) {
@@ -739,17 +727,18 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
     if (idx >= index.recipients.length) {
 	const sentMsg = 'sent to ' + index.recipients.length.toString(10) + ' recipients';
 	showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + totalFeesMsg + ' | ' + sentMsg);
+	selectAddrListEntry(-1);
 	cb();
 	return;
     }
     const recipientIdx = index.recipients[idx];
     const addrInfo = index.addrList[recipientIdx];
-    const sendingMsg = 'sending to ' + addrInfo.idx.toString(10);
+    const sendingMsg = 'sending to address #' + (addrInfo.idx + 1).toString(10);
     showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + totalFeesMsg + ' | ' + sendingMsg);
     //
-    document.getElementById('msgAddrArea').value = addrInfo.addr;
     const elem = index.addrListElems[addrInfo.idx];
     elem.sendArea.value = 'now sending!';
+    selectAddrListEntry(recipientIdx)
     common.replaceClassFromTo(elem.sendArea, 'notBlinking', 'blinking', true);
     mtUtil.encryptMsg(addrInfo.addr, message, function(err, msgFee, encrypted, msgNoBN) {
 	if (!!err) {
@@ -757,7 +746,6 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 	    handleUnlockedMetaMask(null);
 	    return;
 	}
-	document.getElementById('msgFeeArea').value = 'Fee: ' + ether.convertWeiBNToComfort(common.numberToBN(msgFee));
 	const msgRefButton = document.getElementById('msgRefButton');
 	const ref = '0';
 	const gasLimit = 0;
@@ -781,6 +769,31 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 	    common.waitForTXID(err, txid, 'Send-Message', null, ether.etherscanioTxStatusHost, cbFcn);
 	});
     });
+}
+
+
+function selectAddrListEntry(newIdx) {
+    if (newIdx != index.elemIdx) {
+	if (index.elemIdx >= 0) {
+	    const addrInfo = index.addrList[index.elemIdx];
+	    const elem = index.addrListElems[index.elemIdx];
+	    const newSuffix = addrInfo.sendable ? 'Valid' : '';
+	    elem.div.className = 'addrListItemDiv' + newSuffix;
+	}
+	index.elemIdx = newIdx;
+	if (index.elemIdx >= 0) {
+	    const addrInfo = index.addrList[index.elemIdx];
+	    const elem = index.addrListElems[index.elemIdx];
+	    const newSuffix = addrInfo.sendable ? 'Valid' : '';
+	    elem.div.className = 'addrListItemDivSelected' + newSuffix;
+	    elem.div.scrollIntoView({ block: "nearest" });
+	    document.getElementById('msgFeeArea').value = 'Fee: ' + ether.convertWeiBNToComfort(common.numberToBN(addrInfo.feeBN));
+	    document.getElementById('msgAddrArea').value = (!!addrInfo.ensName) ? addrInfo.ensName + ' (' + addrInfo.addr + ')' : addrInfo.addr;
+	} else {
+	    document.getElementById('msgFeeArea').value = '';
+	    document.getElementById('msgAddrArea').value = '';
+	}
+    }
 }
 
 

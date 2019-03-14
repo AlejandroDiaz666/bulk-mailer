@@ -498,19 +498,18 @@ function initMsgArea(enable) {
 // parseAddrs(addrlist, endIdx, cb)
 // endIdx tells how far we've already parsed, start with 0
 //
-function parseAddrs(addrList, endIdx, cb) {
-    console.log('parseAddrs: index.addrList.length = ' + index.addrList.length + ', endIdx = ' + endIdx);
-    showStatus('loading addresses: ' + index.addrList.length.toString(10));
-    const addrIdx = addrList.indexOf('0x', endIdx)
-    if (addrIdx < 0) {
-	cb();
-    } else {
+function parseAddrs(addrList, endIdxNOTUsed, cb) {
+    for (let endIdx = 0; endIdx < addrList.length; ) {
+	const addrIdx = addrList.indexOf('0x', endIdx)
+	if (addrIdx < 0)
+	    break;
+	showStatus('loading addresses: ' + (index.addrList.length + 1).toString(10));
 	endIdx = addrIdx + 42;
 	const addr = addrList.slice(addrIdx, endIdx);
 	const addrInfo = new AddrInfo(index.addrList.length, addr);
 	index.addrList.push(addrInfo);
-	parseAddrs(addrList, endIdx, cb);
     }
+    cb();
 }
 
 
@@ -542,6 +541,10 @@ function fillAddrInfo(addrInfo, cb) {
 	    const elem = index.addrListElems[addrInfo.idx];
 	    elem.validArea.value = (addrInfo.valid) ? 'valid' : 'invalid';
 	    elem.balanceArea.value = ether.convertWeiBNToComfort(addrInfo.balanceBN, 3);
+	    if (!!addrInfo.ensName) {
+		const shortAddr = (addrInfo.ensName.length < 16) ? addrInfo.addr : addrInfo.addr.substring(0, 6) + '...' + addrInfo.addr.substring(38);
+		elem.addrArea.value = addrInfo.ensName + ' (' + shortAddr + ')';
+	    }
 	    if (addrInfo.valid) {
 		elem.feeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(addrInfo.feeBN);
 		elem.activityArea.value = addrInfo.activity.toString(10) + ' messages sent';

@@ -522,7 +522,7 @@ function fillAddrInfoNext(idx, cb) {
     if (idx >= index.addrList.length) {
 	cb();
     } else {
-	showStatus('checking address: ' + idx.toString(10) + ' of ' + (index.addrList.length - 1).toString(10));
+	showStatus('checking address: ' + (idx + 1).toString(10) + ' of ' + index.addrList.length.toString(10));
 	const addrInfo = index.addrList[idx];
 	fillAddrInfo(addrInfo, () => {
 	    setTimeout(fillAddrInfoNext, 500, idx + 1, cb);
@@ -549,8 +549,10 @@ function fillAddrInfo(addrInfo, cb) {
 		elem.feeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(addrInfo.feeBN);
 		elem.activityArea.value = addrInfo.activity.toString(10) + ' messages sent';
 		index.validAddrs.push(addrInfo.idx);
+		elem.div.className = 'addrListItemDivValid';
 	    } else {
 		elem.sendArea.value = 'no -- address is not registered';
+		elem.div.className = 'addrListItemDiv';
 	    }
 	}
     }
@@ -627,7 +629,7 @@ function makeAddrListElem(elemIdx) {
     addrNoArea.rows = 1;
     addrNoArea.readonly = 'readonly';
     addrNoArea.disabled = 'disabled';
-    addrNoArea.value = addrInfo.idx.toString(10);
+    addrNoArea.value = (addrInfo.idx + 1).toString(10);
     addrArea = document.createElement("textarea");
     addrArea.className = 'addrListAddrArea';
     addrArea.rows = 1;
@@ -719,6 +721,8 @@ function findRecipients(cb) {
 	    index.totalFeesBN.iadd(addrInfo.feeBN);
 	    index.recipients.push(idx);
 	}
+	const newSuffix = (elem.sendArea.value == 'yes') ? 'Valid' : '';
+	elem.div.className = 'addrListItemDiv' + newSuffix;
     }
     const feeMsg = 'Total Fees: ' + ether.convertWeiBNToComfort(index.totalFeesBN);
     showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + feeMsg);

@@ -464,8 +464,8 @@ p {
     overflow-y: scroll;
     overflow-x: hidden;
 }
-.addrListItemDiv,    .addrListItemDivSelected,
-.addrListItemDivNew, .addrListItemDivSelectedNew {
+.addrListItemDiv, .addrListItemDivSelected,
+.addrListItemDivValid, .addrListItemDivSelectedValid {
     display: inline-flex;
     clear: both;
     background-color: var(--clr_areabg1);
@@ -473,21 +473,21 @@ p {
     width: 100%;
 }
 .addrListItemDiv,
-.addrListItemDivNew {
+.addrListItemDivValid {
     border: 1px solid transparent;
     margin: 1px;
 }
 .addrListItemDiv:hover,
-.addrListItemDivNew:hover {
+.addrListItemDivValid:hover {
     border: 1px solid #404040;
     margin: 1px;
 }
 .addrListItemDivSelected,
-.addrListItemDivSelectedNew {
+.addrListItemDivSelectedValid {
     border: 2px solid #404040;
 }
-.addrListItemDivNew,
-.addrListItemDivSelectedNew {
+.addrListItemDivValid,
+.addrListItemDivSelectedValid {
     font-weight: bold;
 }
 #addrListHeaderSubject {

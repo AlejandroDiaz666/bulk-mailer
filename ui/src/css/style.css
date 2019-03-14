@@ -144,6 +144,7 @@ p {
     width: 45em;
 }
 #filterFeeInput,
+#filterBalanceInput,
 #filterActivityInput {
     width: 8em;
 }
@@ -530,7 +531,7 @@ p {
 #addrListHeaderSubject {
     margin-right: 1em;
 }
-.addrListAddrNoArea, .addrListAddrArea, .addrListValidArea, .addrListFeeArea, .addrListActivityArea, .addrListSendArea {
+.addrListAddrNoArea, .addrListAddrArea, .addrListValidArea, .addrListFeeArea, .addrListBalanceArea, .addrListActivityArea, .addrListSendArea {
     display: table-cell;
     vertical-align: middle;
     padding-top: 1px;
@@ -555,13 +556,13 @@ p {
     width: 8em;
     min-width: 8em;
 }
-.addrListFeeArea {
+.addrListFeeArea, .addrListBalanceArea {
     width: 12em;
     min-width: 12em;
 }
 .addrListActivityArea {
-    width: 20em;
-    min-width: 20em;
+    width: 12em;
+    min-width: 12em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: hidden;

@@ -25,6 +25,7 @@ const index = module.exports = {
     validAddrs: [],
     recipients: [],
     filterFeeBN: null,
+    filterBalanceBN: null,
     filterActivity: null,
     filterRequireENS: false,
     noAddrsMsg: null,
@@ -41,17 +42,19 @@ function AddrInfo(idx, addr) {
     this.idx = idx;
     this.addr = addr;
     this.feeBN = null;
+    this.balanceBN = null;
     this.activity = null;
     this.ensName = null;
     this.valid = null;
 }
 
-function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, sendArea, addrNo) {
+function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, activityArea, sendArea, addrNo) {
     this.div = div;
     this.addrNoArea = addrNoArea;
     this.addrArea = addrArea;
     this.validArea = validArea;
     this.feeArea = feeArea;
+    this.balanceArea = balanceArea;
     this.activityArea = activityArea;
     this.sendArea = sendArea;
     this.addrNo = addrNo;
@@ -178,6 +181,11 @@ function setMainButtonHandlers() {
 	    document.getElementById('filterFeeInput').value = feeNumberAndUnits.number;
 	    document.getElementById('filterFeeUnits').selectedIndex = feeNumberAndUnits.index;
 	}
+	if (!!index.filterBalanceBN) {
+	    const balanceNumberAndUnits = ether.convertWeiBNToNumberAndUnits(index.filterBalanceBN);
+	    document.getElementById('filterBalanceInput').value = balanceNumberAndUnits.number;
+	    document.getElementById('filterBalanceUnits').selectedIndex = balanceNumberAndUnits.index;
+	}
 	if (!!index.filterActivity)
 	    document.getElementById('filterActivityInput').value = index.filterActivity.toString(10);
 	document.getElementById('filterRequireENS').checked = index.filterRequireENS;
@@ -188,13 +196,21 @@ function setMainButtonHandlers() {
     });
     document.getElementById('filtersSave').addEventListener('click', function() {
 	const feeValue = document.getElementById('filterFeeInput').value;
-	const unitsValue = document.getElementById('filterFeeUnits').value;
-	index.filterFeeBN = (!!feeValue) ? common.decimalAndUnitsToBN(feeValue, unitsValue) : null;
+	const feeUnitsValue = document.getElementById('filterFeeUnits').value;
+	index.filterFeeBN = (!!feeValue) ? common.decimalAndUnitsToBN(feeValue, feeUnitsValue) : null;
 	if (!!feeValue && index.filterFeeBN === null) {
 	    alert('Error Unable to parse Maximum Fee filter');
 	    return;
 	}
 	console.log('filter fee = ' + ((!!index.filterFeeBN) ? index.filterFeeBN.toString(10) : 'null'));
+	const balanceValue = document.getElementById('filterBalanceInput').value;
+	const balanceUnitsValue = document.getElementById('filterBalanceUnits').value;
+	index.filterBalanceBN = (!!balanceValue) ? common.decimalAndUnitsToBN(balanceValue, balanceUnitsValue) : null;
+	if (!!balanceValue && index.filterBalanceBN === null) {
+	    alert('Error Unable to parse Minimum Balance filter');
+	    return;
+	}
+	console.log('filter balance = ' + ((!!index.filterBalanceBN) ? index.filterBalanceBN.toString(10) : 'null'));
 	const activityValue = document.getElementById('filterActivityInput').value;
 	if (!!activityValue)
 	    index.filterActivity = parseInt(activityValue);
@@ -219,15 +235,15 @@ function setMainButtonHandlers() {
 	let message = document.getElementById('msgTextArea').value;
 	let attachmentIdxBN;
 	const attachmentSaveA = document.getElementById('attachmentSaveA');
-	console.log('replyButton: attachmentSaveA.href = ' + attachmentSaveA.href + ', attachmentSaveA.download = ' + attachmentSaveA.download);
+	console.log('send: attachmentSaveA.href = ' + attachmentSaveA.href + ', attachmentSaveA.download = ' + attachmentSaveA.download);
 	if (!attachmentSaveA.href || !attachmentSaveA.download) {
 	    attachmentIdxBN = new BN(0);
 	} else {
 	    const nameLenBN = new BN(attachmentSaveA.download.length);
 	    attachmentIdxBN = new BN(message.length).iuor(nameLenBN.ushln(248));
 	    message += attachmentSaveA.download + attachmentSaveA.href;
-	    console.log('replyButton: attachmentIdxBN = 0x' + attachmentIdxBN.toString(16));
-	    console.log('replyButton: message = ' + message);
+	    console.log('send: attachmentIdxBN = 0x' + attachmentIdxBN.toString(16));
+	    console.log('send: message = ' + message);
 	}
 	//
 	sendRecipients(0, message, attachmentIdxBN, function() {
@@ -317,7 +333,7 @@ function handleUnlockedMetaMask(mode) {
     //
     const accountArea = document.getElementById('accountArea');
     accountArea.value = 'Your account: ' + common.web3.eth.accounts[0];
-    ether.getBalance('ether', function(err, balance) {
+    ether.getBalance(common.web3.eth.accounts[0], 'ether', function(err, balance) {
 	const balanceArea = document.getElementById('balanceArea');
 	console.log('balance (eth) = ' + balance);
 	const balanceETH = parseFloat(balance).toFixed(6);
@@ -431,7 +447,6 @@ function initMsgArea(enable) {
     common.replaceElemClassFromTo('msgRefButton',       'visibleTC', 'hidden',    true).textContent = '';
     common.replaceElemClassFromTo('msgDateArea',        'visibleTC', 'hidden',    true);
     common.replaceElemClassFromTo('msgFeeArea',         'hidden',    'visibleTC', true).value = 'Fee: ';
-    common.replaceElemClassFromTo('replyButton',        'hidden',    'visibleTC', true).textContent = 'Send';
     common.replaceElemClassFromTo('attachmentButton',   'hidden',    'visibleIB', false);
     common.replaceElemClassFromTo('attachmentInput',    'visibleIB', 'hidden', true);
     const attachmentSaveA = document.getElementById('attachmentSaveA');
@@ -445,8 +460,6 @@ function initMsgArea(enable) {
     msgTextArea.className = (msgTextArea.className).replace('hidden', 'visibleIB');
     msgTextArea.disabled = enable ? false : true;
     msgTextArea.readonly = "";
-    const replyButton = document.getElementById('replyButton');
-    replyButton.disabled = enable ? false : true;
     msgTextArea.value = 'Subject: ';
     const attachmentButton = document.getElementById('attachmentButton');
     attachmentButton.disabled = enable ? false : true;
@@ -490,7 +503,7 @@ function fillAddrInfoNext(idx, cb) {
 	showStatus('checking address: ' + idx.toString(10) + ' of ' + (index.addrList.length - 1).toString(10));
 	const addrInfo = index.addrList[idx];
 	fillAddrInfo(addrInfo, () => {
-	    setTimeout(fillAddrInfoNext, 750, idx + 1, cb);
+	    setTimeout(fillAddrInfoNext, 500, idx + 1, cb);
 	});
     }
 }
@@ -505,6 +518,7 @@ function fillAddrInfo(addrInfo, cb) {
 	if (index.addrListElems.length > addrInfo.idx) {
 	    const elem = index.addrListElems[addrInfo.idx];
 	    elem.validArea.value = (addrInfo.valid) ? 'valid' : 'invalid';
+	    elem.balanceArea.value = ether.convertWeiBNToComfort(addrInfo.balanceBN, 3);
 	    if (addrInfo.valid) {
 		elem.feeArea.value = 'Fee: ' + ether.convertWeiBNToComfort(addrInfo.feeBN);
 		elem.activityArea.value = addrInfo.activity.toString(10) + ' messages sent';
@@ -517,20 +531,23 @@ function fillAddrInfo(addrInfo, cb) {
     ether.ensReverseLookup(addrInfo.addr, function(err, name) {
 	if (!err && !!name)
 	    addrInfo.ensName = name;
-        mtEther.accountQuery(addrInfo.addr, function(err, acctInfo) {
-	    addrInfo.valid = (!err && acctInfo.isValid) ? true : false;
-	    if (addrInfo.valid) {
-		addrInfo.activity = acctInfo.sentMsgCount;
-		mtEther.getPeerMessageCount(addrInfo.addr, common.web3.eth.accounts[0], function(err, msgCount) {
-		    console.log(msgCount.toString(10) + ' messages have been sent from ' + addrInfo.addr + ' to me');
-		    addrInfo.feeBN = common.numberToBN((msgCount > 0) ? acctInfo.msgFee : acctInfo.spamFee);
+	ether.getBalance(addrInfo.addr, 'wei', function(err, balance) {
+	    addrInfo.balanceBN = common.numberToBN(balance);
+            mtEther.accountQuery(addrInfo.addr, function(err, acctInfo) {
+		addrInfo.valid = (!err && acctInfo.isValid) ? true : false;
+		if (addrInfo.valid) {
+		    addrInfo.activity = acctInfo.sentMsgCount;
+		    mtEther.getPeerMessageCount(addrInfo.addr, common.web3.eth.accounts[0], function(err, msgCount) {
+			console.log(msgCount.toString(10) + ' messages have been sent from ' + addrInfo.addr + ' to me');
+			addrInfo.feeBN = common.numberToBN((msgCount > 0) ? acctInfo.msgFee : acctInfo.spamFee);
+			fillFcn(addrInfo);
+			cb();
+		    });
+		} else {
 		    fillFcn(addrInfo);
 		    cb();
-		});
-		return;
-	    }
-	    fillFcn(addrInfo);
-	    cb();
+		}
+	    });
 	});
     });
 }
@@ -603,6 +620,12 @@ function makeAddrListElem(elemIdx) {
     feeArea.readonly = 'readonly';
     feeArea.disabled = 'disabled';
     feeArea.value = '';
+    balanceArea = document.createElement("textarea");
+    balanceArea.className = 'addrListBalanceArea';
+    balanceArea.rows = 1;
+    balanceArea.readonly = 'readonly';
+    balanceArea.disabled = 'disabled';
+    balanceArea.value = '';
     activityArea = document.createElement("textarea");
     activityArea.className = 'addrListActivityArea';
     activityArea.rows = 1;
@@ -619,9 +642,10 @@ function makeAddrListElem(elemIdx) {
     div.appendChild(addrArea);
     div.appendChild(validArea);
     div.appendChild(feeArea);
+    div.appendChild(balanceArea);
     div.appendChild(activityArea);
     div.appendChild(sendArea);
-    const addrElem = new AddrElem(div, addrNoArea, addrArea, validArea, feeArea, activityArea, sendArea, elemIdx);
+    const addrElem = new AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, activityArea, sendArea, elemIdx);
     /*
     div.addEventListener('click', function() {
 	const message = msgElem.message;
@@ -655,10 +679,20 @@ function findRecipients(cb) {
 	const idx = index.validAddrs[validIdx];
 	const addrInfo = index.addrList[idx];
 	showStatus(index.noAddrsMsg + ' | filters set | checking recipients: address: ' + idx.toString(10));
-	index.totalFeesBN.iadd(addrInfo.feeBN);
 	const elem = index.addrListElems[addrInfo.idx];
-	elem.sendArea.value = 'yes';
-	index.recipients.push(idx);
+	if (!!index.filterFeeBN && addrInfo.feeBN.gt(index.filterFeeBN))
+	    elem.sendArea.value = 'no -- fee is too high';
+	else if (!!index.filterBalanceBN && addrInfo.balanceBN.lt(index.filterBalanceBN))
+	    elem.sendArea.value = 'no -- balance is too low';
+	else if (!!index.filterActivity && parseInt(addrInfo.activity) < parseInt(index.filterActivity))
+	    elem.sendArea.value = 'no -- insufficient activity';
+	else if (!!index.filterRequireENS && !ensName)
+	    elem.sendArea.value = 'no -- does not have ENS name';
+	else {
+	    elem.sendArea.value = 'yes';
+	    index.totalFeesBN.iadd(addrInfo.feeBN);
+	    index.recipients.push(idx);
+	}
     }
     const feeMsg = 'Total Fees: ' + ether.convertWeiBNToComfort(index.totalFeesBN);
     showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + feeMsg);

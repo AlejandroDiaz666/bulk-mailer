@@ -58,6 +58,17 @@
 	  <option value="1000000000000">Szabo</option>
 	  <option value="1000000000000000">Finney</option>
 	</select><br/>
+	<li>Minimum Balance: only recipients who have at least the specified amount of Ether</li>
+	<input id="filterBalanceInput" class="modalInput" type="text" placeholder="min balance"/>
+	<select id="filterBalanceUnits">
+	  <option value="1">Wei</option>
+	  <option value="1000">Kwei</option>
+	  <option value="1000000">Mwei</option>
+	  <option value="1000000000">Gwei</option>
+	  <option value="1000000000000">Szabo</option>
+	  <option value="1000000000000000">Finney</option>
+	  <option value="1000000000000000000">Ether</option>
+	</select><br/>
 	<li>Minimum Activity: only recipients who have <i>sent</i> the specified number of messages</li>
 	<input id="filterActivityInput" type="text" class="modalInput" placeholder="min activity"/><br/>
 	<li>Require ENS: only recipients who have set up a reverse ENS name for their address</li>
@@ -134,6 +145,7 @@
 	<textarea id="addrListHeaderAddr" class="addrListAddrArea" rows="1" readonly="readonly" disabled="disabled">Address</textarea>
 	<textarea id="addrListHeaderValid" class="addrListValidArea" rows="1" readonly="readonly" disabled="disabled">Valid</textarea>
 	<textarea id="addrListHeaderFee" class="addrListFeeArea" rows="1" readonly="readonly" disabled="disabled">Fee</textarea>
+	<textarea id="addrListHeaderBalance" class="addrListBalanceArea" rows="1" readonly="readonly" disabled="disabled">Balance</textarea>
 	<textarea id="addrListHeaderActivity" class="addrListActivityArea" rows="1" readonly="readonly" disabled="disabled">Activity</textarea>
 	<textarea id="addrListHeaderSend" class="addrListSendArea" rows="1" readonly="readonly" disabled="disabled">Send to this recipient?</textarea>
       </div>
@@ -156,7 +168,6 @@
 	    <textarea id="msgIdArea" rows="1" class="hidden">&nbsp;</textarea>
 	    <button id="msgRefButton" type="button" class="msgInfoAreaButton hidden">Ref: N/A</button>
 	    <textarea id="msgDateArea" rows="1" class="hidden">&nbsp;</textarea>
-	    <button id="replyButton" type="button" class="msgInfoAreaButton hidden">Reply</button>
 	    <textarea id="msgFeeArea" rows="1" readonly="readonly" disabled="disabled" class="hidden">&nbsp;</textarea>
 	  </span>
 	</div>

@@ -32,6 +32,7 @@ const index = module.exports = {
     totalFeesBN: null,
 
     main: function() {
+	setOptionsButtonHandlers();
 	setMainButtonHandlers();
 	beginTheBeguine('startup');
     },
@@ -64,23 +65,45 @@ function AddrElem(div, addrNoArea, addrArea, validArea, feeArea, balanceArea, ac
 }
 
 
-function readSingleFile(e) {
-  var file = e.target.files[0];
-  if (!file) {
-    return;
-  }
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var contents = e.target.result;
-    // Display file content
-    displayContents(contents);
-  };
-  reader.readAsText(file);
-}
-
-function displayContents(contents) {
-  var element = document.getElementById('file-content');
-  element.innerHTML = contents;
+function setOptionsButtonHandlers() {
+    const versionArea = document.getElementById('versionArea');
+    versionArea.textContent = 'Build: ' + autoVersion.version();
+    const optionsButton = document.getElementById('optionsButton');
+    optionsButton.addEventListener('click', () => { common.replaceElemClassFromTo('optionsPanel', 'hidden', 'visibleB', null); });
+    const closeOptionsButton = document.getElementById('closeOptionsButton');
+    closeOptionsButton.addEventListener('click', () => {
+	common.replaceElemClassFromTo('optionsPanel', 'visibleB', 'hidden', null);
+	if (localStorage['logsNodeType'] != ether.nodeType)
+	    ether.nodeType = localStorage['logsNodeType'];
+	if (localStorage['logsCustomNode'] != ether.node)
+	    ether.node = localStorage['logsCustomNode'];
+    });
+    const marysThemeButton = document.getElementById('marysThemeButton');
+    const wandasThemeButton = document.getElementById('wandasThemeButton');
+    const relaxThemeButton = document.getElementById('relaxThemeButton');
+    const themedStyle = document.getElementById('themedStyle');
+    const updateThemeFcn = (theme) => {
+	localStorage['theme'] = theme;
+	if (themedStyle.href.indexOf('marys-style') >= 0)
+	    themedStyle.href = themedStyle.href.replace('marys-style', localStorage['theme']);
+	if (themedStyle.href.indexOf('wandas-style') >= 0)
+	    themedStyle.href = themedStyle.href.replace('wandas-style', localStorage['theme']);
+	if (themedStyle.href.indexOf('relax-style') >= 0)
+	    themedStyle.href = themedStyle.href.replace('relax-style', localStorage['theme']);
+    };
+    if (!!localStorage['theme'] && localStorage['theme'].indexOf('wanda') >= 0) {
+	wandasThemeButton.checked = true;
+	updateThemeFcn('wandas-style');
+    } else if (!!localStorage['theme'] && localStorage['theme'].indexOf('mary') >= 0) {
+	marysThemeButton.checked = true;
+	updateThemeFcn('marys-style');
+    } else {
+	relaxThemeButton.checked = true;
+	updateThemeFcn('relax-style');
+    }
+    marysThemeButton.addEventListener('click', () => {	updateThemeFcn('marys-style'); });
+    wandasThemeButton.addEventListener('click', () => { updateThemeFcn('wandas-style'); });
+    relaxThemeButton.addEventListener('click', () => { updateThemeFcn('relax-style'); });
 }
 
 

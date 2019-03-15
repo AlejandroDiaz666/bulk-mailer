@@ -255,6 +255,15 @@ function setMainButtonHandlers() {
 	common.setMenuButtonState('loadAddrFileButton', 'Disabled');
 	common.setMenuButtonState('setFiltersButton',   'Disabled');
 	common.setMenuButtonState('sendButton',         'Disabled');
+	//
+	// in case we already sent one message, clear the 'sent' status from each recipient
+	for (let idx = 0; idx < index.recipients.length; ++idx) {
+	    const recipientIdx = index.recipients[idx];
+	    const elem = index.addrListElems[recipientIdx];
+	    common.replaceClassFromTo(elem.sendArea, 'blinking', 'notBlinking', true);
+	    elem.sendArea.value = 'yes';
+	}
+	//
 	let message = document.getElementById('msgTextArea').value;
 	let attachmentIdxBN;
 	const attachmentSaveA = document.getElementById('attachmentSaveA');

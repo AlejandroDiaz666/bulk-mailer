@@ -749,9 +749,10 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 	const msgRefButton = document.getElementById('msgRefButton');
 	const ref = '0';
 	const gasLimit = 0;
-	const gasPrice = "20";
-	mtEther.sendMessagePK(index.privateKey, addrInfo.addr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPrice, function(err, txid) {
-	    console.log('txid = ' + txid);
+	gasPriceBN = new BN(ether.gweiHex, 16)
+	gasPriceBN.imuln(10);
+	mtEther.sendMessagePK(index.privateKey, addrInfo.addr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPriceBN.toString(10), function(err, txid) {
+	    console.log('sendMessagePK cb: err = ' + err + ', txid = ' + txid);
 	    const cbFcn = (err, receipt) => {
 		console.log('waitForTXID cb: err = ' + err + ', receipt = ' + (!!receipt ? JSON.stringify(receipt) : ' null'));
 		if (!!err) {
@@ -765,6 +766,7 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 		common.clearStatusDiv();
 		console.log('waitForTXID cb: mtUtil.acctInfo.sentMsgCount = ' + mtUtil.acctInfo.sentMsgCount);
 		sendRecipients(idx + 1, message, attachmentIdxBN, cb);
+		//setTimeout(sendRecipients, 1000, idx + 1, message, attachmentIdxBN, cb);
 	    };
 	    common.waitForTXID(err, txid, 'Send-Message', null, ether.etherscanioTxStatusHost, cbFcn);
 	});

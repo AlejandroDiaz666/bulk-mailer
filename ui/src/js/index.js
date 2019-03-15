@@ -759,7 +759,7 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 	const ref = '0';
 	const gasLimit = 0;
 	gasPriceBN = new BN(ether.gweiHex, 16)
-	gasPriceBN.imuln(10);
+	gasPriceBN.imuln(20);
 	mtEther.sendMessagePK(index.privateKey, addrInfo.addr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPriceBN.toString(10), function(err, txid) {
 	    console.log('sendMessagePK cb: err = ' + err + ', txid = ' + txid);
 	    const cbFcn = (err, receipt) => {
@@ -774,8 +774,8 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 		common.waitingForTxid = false;
 		common.clearStatusDiv();
 		console.log('waitForTXID cb: mtUtil.acctInfo.sentMsgCount = ' + mtUtil.acctInfo.sentMsgCount);
-		sendRecipients(idx + 1, message, attachmentIdxBN, cb);
-		//setTimeout(sendRecipients, 1000, idx + 1, message, attachmentIdxBN, cb);
+		//sendRecipients(idx + 1, message, attachmentIdxBN, cb);
+		setTimeout(sendRecipients, 5000, idx + 1, message, attachmentIdxBN, cb);
 	    };
 	    common.waitForTXID(err, txid, 'Send-Message', null, ether.etherscanioTxStatusHost, cbFcn);
 	});

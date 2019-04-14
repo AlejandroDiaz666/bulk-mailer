@@ -63,7 +63,7 @@ const mtUtil = module.exports = {
 
     //
     // get and parse a single msg
-    // cb(err, msgId, fromAddr, toAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date)
+    // cb(err, msgId, fromAddr, toAddr, viaAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date)
     //
     getAndParseIdMsg: function(msgId, cb) {
 	console.log('getAndParseIdMsg: enter msgId = ' + msgId);
@@ -78,7 +78,7 @@ const mtUtil = module.exports = {
 		if (!!err)
 		    console.log('getAndParseIdMsg: err = ' + err);
 		//either an error, or maybe just no events
-		cb(err, '', '', '', '', '', null, '', '', '', '');
+		cb(err, '', '', '', '', '', '', null, '', '', '', '');
 		return;
 	    }
 	    mtEther.parseMessageEvent(msgResult[0], cb);
@@ -87,8 +87,8 @@ const mtUtil = module.exports = {
 
 
     //
-    // gets up to 3 messages specified in msgIds[]
-    // msgCb(err, cookie, msgId, fromAddr, toAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date)
+    // gets up to 9 messages specified in msgIds[]
+    // msgCb(err, cookie, msgId, fromAddr, toAddr, viaAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date)
     // doneCb(noMessagesProcessed)
     //
     getAndParseIdMsgs: function(msgIds, msgCookies, msgCb, doneCb) {
@@ -97,20 +97,11 @@ const mtUtil = module.exports = {
 	    fromBlock: mtEther.firstBlock,
 	    toBlock: 'latest',
 	    address: mtEther.EMT_CONTRACT_ADDR,
-	    topics: [ mtEther.getMessageEventTopic0() ]
+	    topics: [ mtEther.getMessageEventTopic0(), [] ]
 	};
-	if (msgIds.length > 0) {
-	    if (!!msgIds[0])
-		options.topics.push(msgIds[0]);
-	    if (options.topics.length > 1) {
-		if (!!msgIds[1])
-		    options.topics.push(msgIds[1]);
-		if (options.topics.length > 2) {
-		    if (!!msgIds[2])
-			options.topics.push(msgIds[2]);
-		}
-	    }
-	}
+	const topicGroup = options.topics[1];
+	for (let i = 0; i < msgIds.length; ++i)
+	    topicGroup.push(msgIds[i]);
 	console.log('getAndParseIdMsgs: options = ' + JSON.stringify(options));
 	ether.getLogs3(options, function(err, msgResults) {
 	    console.log('getAndParseIdMsgs: err = ' + err + ', msgResults.length = ' + msgResults.length);
@@ -119,17 +110,17 @@ const mtUtil = module.exports = {
 		    console.log('getAndParseIdMsgs: err = ' + err);
 		//either an error, or maybe just no events
 		for (let i = 0; i < msgIds.length; ++i)
-		    msgCb(err, msgCookies[msgIds[i]], msgIds[i], '', '', '', '', null, '', '', '', '');
+		    msgCb(err, msgCookies[msgIds[i]], msgIds[i], '', '', '', '', '', null, '', '', '', '');
 		doneCb(msgIds.length);
 		return;
 	    }
 	    let msgCbCount = 0;
 	    let bogusCount = 0;
 	    for (let i = 0; i < msgResults.length; ++i) {
-		mtEther.parseMessageEvent(msgResults[i], function(err, msgId, fromAddr, toAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date) {
+		mtEther.parseMessageEvent(msgResults[i], function(err, msgId, fromAddr, toAddr, viaAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date) {
 		    if (!!msgCookies[msgId]) {
 			console.log('getAndParseIdMsgs: msgId = ' + msgId + ', fromAddr = ' + fromAddr + ', toAddr = ' + toAddr);
-			msgCb(err, msgCookies[msgId], msgId, fromAddr, toAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date);
+			msgCb(err, msgCookies[msgId], msgId, fromAddr, toAddr, viaAddr, txCount, rxCount, attachmentIdxBN, ref, msgHex, blockNumber, date);
 			++msgCbCount;
 		    } else {
 			console.log('getAndParseIdMsgs: got an unexpected msg, msgId = ' + msgId + ', fromAddr = ' + fromAddr + ', toAddr = ' + toAddr);
@@ -160,6 +151,7 @@ const mtUtil = module.exports = {
 		let messageText = decrypted;
 		let attachment = null;
 		if (!!attachmentIdxBN && !attachmentIdxBN.isZero()) {
+		    console.log('decryptMsg: attachmentIdxBN = 0x' + attachmentIdxBN.toString(16));
 		    const idx = attachmentIdxBN.maskn(248).toNumber();
 		    console.log('decryptMsg: attachment at idx ' + idx);
 		    messageText = decrypted.substring(0, idx);
@@ -197,7 +189,7 @@ const mtUtil = module.exports = {
 	    //in order to figure the message fee we need to see how many messages have been sent from the proposed recipient to me
 	    mtEther.getPeerMessageCount(toAddr, common.web3.eth.accounts[0], function(err, msgCount) {
 		console.log('encryptMsg: ' + msgCount.toString(10) + ' messages have been sent from ' + toAddr + ' to me');
-		const msgFee = (msgCount > 0) ? toAcctInfo.msgFee : toAcctInfo.spamFee;
+		const msgFee = (encrypted.length == 0) ? 0 : (msgCount > 0) ? toAcctInfo.msgFee : toAcctInfo.spamFee;
 		cb(null, msgFee, encrypted, sentMsgCtrBN);
 	    });
 	});

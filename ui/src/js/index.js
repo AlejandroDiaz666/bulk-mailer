@@ -278,7 +278,8 @@ function setMainButtonHandlers() {
 	    console.log('send: message = ' + message);
 	}
 	//
-	sendRecipients(0, message, attachmentIdxBN, function() {
+	const sentMsgCtrBN = common.numberToBN(mtUtil.acctInfo.sentMsgCount);
+	sendRecipientsWaitCount(sentMsgCtrBN, 0, message, attachmentIdxBN, function() {
 	    document.getElementById('msgTextArea').disabled = false;
 	    document.getElementById('attachmentButton').disabled = false;
 	    common.setMenuButtonState('privateKeyButton',   'Enabled');
@@ -728,6 +729,28 @@ function findRecipients(cb) {
 
 
 //
+// this fcn calls sendRecipient, but first it waits until the sentMsgCount is equal to the passed value.
+// the purpose is to ensure that we don't send consecutive messages too quickly, since each message must be encrypted by the strictly increasing
+// message count.
+//
+// this fcn and sendRecipients are a recursive pair
+//
+function sendRecipientsWaitCount(countBN, idx, message, attachmentIdxBN, cb) {
+    mtEther.accountQuery(common.web3.eth.accounts[0], function(err, _acctInfo) {
+	const sentMsgCtrBN = common.numberToBN(_acctInfo.sentMsgCount);
+	if (sentMsgCtrBN.lt(countBN)) {
+	    common.setLoadingIcon('start');
+	    setTimeout(sendRecipientsWaitCount, 5000, idx, message, attachmentIdxBN, cb);
+	    return;
+	}
+	common.setLoadingIcon(null);
+	//sendRecipients will call mtUtil.encryptMsg, which will pick up the new acctInfo
+	sendRecipients(idx, message, attachmentIdxBN, cb);
+    });
+}
+
+
+//
 // recursively send message to all recipients
 // message already includes any attachment
 //
@@ -759,6 +782,7 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 	const ref = '0';
 	const gasLimit = 0;
 	gasPriceBN = new BN(ether.gweiHex, 16)
+	//TODO: let user specify gas price
 	gasPriceBN.imuln(20);
 	mtEther.sendMessagePK(index.privateKey, addrInfo.addr, attachmentIdxBN, ref, encrypted, msgFee, gasLimit, gasPriceBN.toString(10), function(err, txid) {
 	    console.log('sendMessagePK cb: err = ' + err + ', txid = ' + txid);
@@ -774,8 +798,9 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
 		common.waitingForTxid = false;
 		common.clearStatusDiv();
 		console.log('waitForTXID cb: mtUtil.acctInfo.sentMsgCount = ' + mtUtil.acctInfo.sentMsgCount);
-		//sendRecipients(idx + 1, message, attachmentIdxBN, cb);
-		setTimeout(sendRecipients, 5000, idx + 1, message, attachmentIdxBN, cb);
+		//sendRecipientsWaitCount will clear the loading icon
+		common.setLoadingIcon('start');
+		setTimeout(sendRecipientsWaitCount, 5000, msgNoBN, idx + 1, message, attachmentIdxBN, cb);
 	    };
 	    common.waitForTXID(err, txid, 'Send-Message', null, ether.etherscanioTxStatusHost, cbFcn);
 	});

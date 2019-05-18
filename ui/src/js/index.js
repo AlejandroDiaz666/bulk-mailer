@@ -104,10 +104,87 @@ function setOptionsButtonHandlers() {
     marysThemeButton.addEventListener('click', () => {	updateThemeFcn('marys-style'); });
     wandasThemeButton.addEventListener('click', () => { updateThemeFcn('wandas-style'); });
     relaxThemeButton.addEventListener('click', () => { updateThemeFcn('relax-style'); });
+    //
+    // display/update store messages: blockchain/swarm
+    //
+    const storeMsgsSelect = document.getElementById('storeMsgsSelect');
+    const storeMsgsSelectFcn = () => {
+	localStorage['storeMessages'] = storeMsgsSelect.value;
+	mtUtil.setMessageStorage(localStorage['storeMessages'], localStorage['swarmGateway']);
+	common.replaceElemClassFromTo('swarmGatewayViewButton', 'visibleB', 'hidden', true);
+	if (storeMsgsSelect.value == 'swarm' || storeMsgsSelect.value == 'auto') {
+	    common.replaceElemClassFromTo('swarmGatewayDiv', 'hidden', 'visibleB', false);
+	} else {
+	    common.replaceElemClassFromTo('swarmGatewayDiv', 'visibleB', 'hidden', true);
+	    document.getElementById('noteDialogIntro').textContent =
+		'You have selected to store messages on the Ethereum blockchain (as event logs). ' +
+		'This is the most reliable way to store messages -- however, this is also the ' +
+		'most expensive way to store large messages (about 300K gas for a 1KB message).';
+	    document.getElementById('noteDialogNote').textContent =
+		'Also, note that messages stored this way are limited in size to about 25KB ' +
+		'(because of the Ethereum block gas-limit).';
+	    common.replaceElemClassFromTo('noteDialogDiv', 'noteDialogLarge', 'noteDialogSmall', true);
+	    common.replaceElemClassFromTo('noteDialogDiv', 'hidden', 'visibleB', true);
+	}
+    };
+    if (!localStorage['storeMessages'])
+	localStorage['storeMessages'] = 'ethereum';
+    storeMsgsSelect.value = localStorage['storeMessages'];
+    if (storeMsgsSelect.value == 'swarm' || storeMsgsSelect.value == 'auto')
+	common.replaceElemClassFromTo('swarmGatewayViewButton', 'hidden', 'visibleB', false);
+    const swarmGatewayDoFcn = () => {
+	common.replaceElemClassFromTo('swarmGatewayDiv', 'visibleB', 'hidden', true);
+	common.replaceElemClassFromTo('swarmGatewayViewButton', 'hidden', 'visibleB', false);
+	localStorage['swarmGateway'] = document.getElementById('swarmGatewayArea').value;
+	mtUtil.setMessageStorage(localStorage['storeMessages'], localStorage['swarmGateway']);
+	document.getElementById('noteDialogIntro').textContent = (mtUtil.storageMode == 'swarm')
+	    ? 'You have selected to store messages on Swarm. Every messages is still encrypted, ' +
+	    'and its hash is stored on the the Ethereum blockchain (as an event log). This means ' +
+	    'that no matter the size of the message (including any attachment), the gas that is ' +
+	    'consumed will always be the same.'
+	    : 'You have selected to store messages on the Ethereum blockchain (as event logs), ' +
+	    'except those messages that have attachments, which will be stored on Swarm.';
+	document.getElementById('noteDialogNote').textContent = (mtUtil.storageMode == 'swarm')
+	    ? 'However, please note Swarm is still experimental. Messages stored on Swarm could ' +
+	    'disappear without warning. Also, Swarm gateways impose filesize limitations which ' +
+	    'might prevent successful uploading, or cause sporadic "timeouts" when downloading ' +
+	    'large messages.'
+	    : 'Messages stored on the Ethereum blockchain will persist forever. However for ' +
+	    'messages with attachments, please note that Swarm is still experimental. And messages ' +
+	    'stored on Swarm could disappear without warning. Also, Swarm gateways impose filesize ' +
+	    'limitations which might prevent successful uploading, or cause sporadic "timeouts" ' +
+	    'when downloading large messages.';
+	common.replaceElemClassFromTo('noteDialogDiv', 'noteDialogSmall', 'noteDialogLarge', true);
+	common.replaceElemClassFromTo('noteDialogDiv', 'hidden', 'visibleB', true);
+    };
+    if (!localStorage['swarmGateway'])
+	localStorage['swarmGateway'] = 'https://swarm-gateways.net';
+    mtUtil.setMessageStorage(localStorage['storeMessages'], localStorage['swarmGateway']);
+    document.getElementById('swarmGatewayArea').value = localStorage['swarmGateway'];
+    storeMsgsSelect.addEventListener('change', storeMsgsSelectFcn);
+    document.getElementById('swarmGatewayDoButton').addEventListener('click', swarmGatewayDoFcn);
+    document.getElementById('swarmGatewayViewButton').addEventListener('click', storeMsgsSelectFcn);
+    //
+    // swarm timeout (for downloads)
+    //
+    const swarmTimeoutSelect = document.getElementById('swarmTimeoutSelect');
+    if (!localStorage['swarmTimeout'])
+	localStorage['swarmTimeout'] = '4000';
+    swarmTimeoutSelect.value = localStorage['swarmTimeout'];
+    const swarmTimeoutSelectFcn = () => {
+	localStorage['swarmTimeout'] = swarmTimeoutSelect.value;
+	mtUtil.setSwarmTimeout(localStorage['swarmTimeout']);
+    };
+    swarmTimeoutSelect.addEventListener('change', swarmTimeoutSelectFcn);
 }
 
 
 function setMainButtonHandlers() {
+    const noteDialogOkButton = document.getElementById('noteDialogOkButton');
+    noteDialogOkButton.addEventListener('click', function() {
+	common.replaceElemClassFromTo('noteDialogDiv', 'visibleB', 'hidden', true);
+    });
+
     //
     // private key
     //
@@ -249,44 +326,14 @@ function setMainButtonHandlers() {
     // send
     //
     document.getElementById('sendButton').addEventListener('click', function() {
-	document.getElementById('msgTextArea').disabled = true;
-	document.getElementById('attachmentButton').disabled = true;
-	common.setMenuButtonState('privateKeyButton',   'Disabled');
-	common.setMenuButtonState('loadAddrFileButton', 'Disabled');
-	common.setMenuButtonState('setFiltersButton',   'Disabled');
-	common.setMenuButtonState('sendButton',         'Disabled');
-	//
-	// in case we already sent one message, clear the 'sent' status from each recipient
-	for (let idx = 0; idx < index.recipients.length; ++idx) {
-	    const recipientIdx = index.recipients[idx];
-	    const elem = index.addrListElems[recipientIdx];
-	    common.replaceClassFromTo(elem.sendArea, 'blinking', 'notBlinking', true);
-	    elem.sendArea.value = 'yes';
-	}
-	//
-	let message = document.getElementById('msgTextArea').value;
-	let attachmentIdxBN;
-	const attachmentSaveA = document.getElementById('attachmentSaveA');
-	console.log('send: attachmentSaveA.href = ' + attachmentSaveA.href + ', attachmentSaveA.download = ' + attachmentSaveA.download);
-	if (!attachmentSaveA.href || !attachmentSaveA.download) {
-	    attachmentIdxBN = new BN(0);
-	} else {
-	    const nameLenBN = new BN(attachmentSaveA.download.length);
-	    attachmentIdxBN = new BN(message.length).iuor(nameLenBN.ushln(248));
-	    message += attachmentSaveA.download + attachmentSaveA.href;
-	    console.log('send: attachmentIdxBN = 0x' + attachmentIdxBN.toString(16));
-	    console.log('send: message = ' + message);
-	}
-	//
-	const sentMsgCtrBN = common.numberToBN(mtUtil.acctInfo.sentMsgCount);
-	sendRecipientsWaitCount(sentMsgCtrBN, 0, message, attachmentIdxBN, function() {
-	    document.getElementById('msgTextArea').disabled = false;
-	    document.getElementById('attachmentButton').disabled = false;
-	    common.setMenuButtonState('privateKeyButton',   'Enabled');
-	    common.setMenuButtonState('loadAddrFileButton', 'Enabled');
-	    common.setMenuButtonState('setFiltersButton',   'Enabled');
-	    common.setMenuButtonState('sendButton',         'Enabled');
-	});
+	common.replaceElemClassFromTo('sendDialogDiv', 'hidden', 'visibleB', true);
+    });
+    document.getElementById('sendDialogCancelButton').addEventListener('click', function() {
+	common.replaceElemClassFromTo('sendDialogDiv', 'visibleB', 'hidden', true);
+    });
+    document.getElementById('sendDialogOkButton').addEventListener('click', function() {
+	common.replaceElemClassFromTo('sendDialogDiv', 'visibleB', 'hidden', true);
+	doSend();
     });
     //
     // addr list scroll
@@ -364,13 +411,19 @@ function handleUnlockedMetaMask(mode) {
     common.waitingForTxid = false;
     index.localStoragePrefix = (common.web3.eth.accounts[0]).substring(2, 10) + '-';
     //
-    const accountArea = document.getElementById('accountArea');
-    accountArea.value = 'Your account: ' + common.web3.eth.accounts[0];
+    //
+    ether.ensReverseLookup(common.web3.eth.accounts[0], function(err, name) {
+	let addrStr = common.web3.eth.accounts[0];
+	if (!err && !!name)
+	    addrStr = common.abbreviateAddrForEns(common.web3.eth.accounts[0], name, 8);
+	document.getElementById('accountArea').value = 'Account: ' + addrStr;
+	document.getElementById('accountAreaFull').textContent = common.web3.eth.accounts[0];
+    });
     ether.getBalance(common.web3.eth.accounts[0], 'ether', function(err, balance) {
 	const balanceArea = document.getElementById('balanceArea');
 	console.log('balance (eth) = ' + balance);
 	const balanceETH = parseFloat(balance).toFixed(6);
-	balanceArea.value = 'Balance: ' + balanceETH.toString(10) + ' Eth';
+	balanceArea.value = 'Eth Balance: ' + balanceETH.toString(10) + ' Eth';
     });
     ether.getNetwork(function(err, network) {
 	const networkArea = document.getElementById('networkArea');
@@ -388,9 +441,8 @@ function handleUnlockedMetaMask(mode) {
 	    alert(err)
 	    return;
 	}
-	mtEther.accountQuery(common.web3.eth.accounts[0], function(err, _acctInfo) {
-	    mtUtil.acctInfo = _acctInfo;
-	    mtUtil.publicKey = (!!mtUtil.acctInfo) ? mtUtil.acctInfo.publicKey : null;
+	mtUtil.refreshAcctInfo(true, function(err, _acctInfo) {
+	    console.log('handleUnlockedMetaMask: mtUtil.acctInfo.msgFee = ' + mtUtil.acctInfo.msgFee);
 	    //console.log('handleUnlockedMetaMask: acctInfo: ' + JSON.stringify(mtUtil.acctInfo));
 	    //console.log('handleUnlockedMetaMask: publicKey: ' + mtUtil.publicKey);
 	    if (!mtUtil.publicKey || mtUtil.publicKey == '0x') {
@@ -442,6 +494,7 @@ function handleRegisteredAcct(mode) {
 	    common.showWaitingForMetaMask(false);
 	    if (!err) {
 		initMsgArea(false);
+		displayFeesAndMsgCnt();
 		showStatus('Begin by entering your private key...');
 		common.setMenuButtonState('privateKeyButton',   'Enabled');
 		common.setMenuButtonState('loadAddrFileButton', 'Disabled');
@@ -711,7 +764,7 @@ function findRecipients(cb) {
 	    elem.sendArea.value = 'no -- balance is too low';
 	else if (!!index.filterActivity && parseInt(addrInfo.activity) < parseInt(index.filterActivity))
 	    elem.sendArea.value = 'no -- insufficient activity';
-	else if (!!index.filterRequireENS && !ensName)
+	else if (!!index.filterRequireENS && !addrInfo.ensName)
 	    elem.sendArea.value = 'no -- does not have ENS name';
 	else {
 	    addrInfo.sendable = true;
@@ -728,6 +781,54 @@ function findRecipients(cb) {
 }
 
 
+
+//
+// kick off the send operation
+// starts by calling sendRecipientsWaitCount(sentMsgCtrBN, 0, message, attachmentIdxBN, ...)
+//
+function doSend() {
+    document.getElementById('msgTextArea').disabled = true;
+    document.getElementById('attachmentButton').disabled = true;
+    common.setMenuButtonState('privateKeyButton',   'Disabled');
+    common.setMenuButtonState('loadAddrFileButton', 'Disabled');
+    common.setMenuButtonState('setFiltersButton',   'Disabled');
+    common.setMenuButtonState('sendButton',         'Disabled');
+    //
+    // in case we already sent one message, clear the 'sent' status from each recipient
+    for (let idx = 0; idx < index.recipients.length; ++idx) {
+	const recipientIdx = index.recipients[idx];
+	const elem = index.addrListElems[recipientIdx];
+	common.replaceClassFromTo(elem.sendArea, 'blinking', 'notBlinking', true);
+	elem.sendArea.value = 'yes';
+    }
+    //
+    let message = document.getElementById('msgTextArea').value;
+    let attachmentIdxBN;
+    const attachmentSaveA = document.getElementById('attachmentSaveA');
+    console.log('send: attachmentSaveA.href = ' + attachmentSaveA.href + ', attachmentSaveA.download = ' + attachmentSaveA.download);
+    if (!attachmentSaveA.href || !attachmentSaveA.download) {
+	attachmentIdxBN = new BN(0);
+    } else {
+	const nameLenBN = new BN(attachmentSaveA.download.length);
+	attachmentIdxBN = new BN(message.length).iuor(nameLenBN.ushln(248));
+	message += attachmentSaveA.download + attachmentSaveA.href;
+	console.log('send: attachmentIdxBN = 0x' + attachmentIdxBN.toString(16));
+	console.log('send: message = ' + message);
+    }
+    //
+    const sentMsgCtrBN = common.numberToBN(mtUtil.acctInfo.sentMsgCount);
+    sendRecipientsWaitCount(sentMsgCtrBN, 0, message, attachmentIdxBN, function() {
+	document.getElementById('msgTextArea').disabled = false;
+	document.getElementById('attachmentButton').disabled = false;
+	common.setMenuButtonState('privateKeyButton',   'Enabled');
+	common.setMenuButtonState('loadAddrFileButton', 'Enabled');
+	common.setMenuButtonState('setFiltersButton',   'Enabled');
+	common.setMenuButtonState('sendButton',         'Enabled');
+	displayFeesAndMsgCnt();
+    });
+}
+
+
 //
 // this fcn calls sendRecipient, but first it waits until the sentMsgCount is equal to the passed value.
 // the purpose is to ensure that we don't send consecutive messages too quickly, since each message must be encrypted by the strictly increasing
@@ -736,11 +837,11 @@ function findRecipients(cb) {
 // this fcn and sendRecipients are a recursive pair
 //
 function sendRecipientsWaitCount(countBN, idx, message, attachmentIdxBN, cb) {
-    mtEther.accountQuery(common.web3.eth.accounts[0], function(err, _acctInfo) {
+    mtUtil.refreshAcctInfo(true, function(err, _acctInfo) {
 	const sentMsgCtrBN = common.numberToBN(_acctInfo.sentMsgCount);
 	if (sentMsgCtrBN.lt(countBN)) {
 	    common.setLoadingIcon('start');
-	    setTimeout(sendRecipientsWaitCount, 5000, idx, message, attachmentIdxBN, cb);
+	    setTimeout(sendRecipientsWaitCount, 5000, countBN, idx, message, attachmentIdxBN, cb);
 	    return;
 	}
 	common.setLoadingIcon(null);
@@ -765,7 +866,11 @@ function sendRecipients(idx, message, attachmentIdxBN, cb) {
     }
     const recipientIdx = index.recipients[idx];
     const addrInfo = index.addrList[recipientIdx];
-    const sendingMsg = 'sending to address #' + (addrInfo.idx + 1).toString(10);
+    if (!addrInfo || !addrInfo.idx) {
+	console.log('huh? addrInfo = ' + addrInfo + ', idx = ' + idx + ', recipients.length = ' + index.recipients.length + ', recipientIdx = ' + recipientIdx);
+	console.log('huh? addrInfo.ix = ' + (!!addrInfo && addrInfo.idx) + ', addrList.length = ' + index.addrList.length);
+    }
+    const sendingMsg = 'sending to recipient #' + idx.toString(10) + ' (address #' + (addrInfo.idx + 1).toString(10) + ')';
     showStatus(index.noAddrsMsg + ' | filters set | ' + index.recipients.length.toString(10) + ' recipients | ' + totalFeesMsg + ' | ' + sendingMsg);
     //
     const elem = index.addrListElems[addrInfo.idx];

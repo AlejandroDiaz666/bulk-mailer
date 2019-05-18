@@ -60,14 +60,17 @@ const common = module.exports = {
 	return(web3Utils.toBN(number));
     },
 
-    stripNonNumber: function(number) {
+    stripNonNumber: function(number, decimalOK) {
 	//first ensure passed parm is a string
 	let numberStr = number.toString();
 	if (numberStr.startsWith('0x')) {
 	    numberStr = numberStr.substring(2);
 	    numberStr = '0x' + numberStr.replace(/[^0-9a-fA-F]/g, '');
 	} else {
-	    numberStr = numberStr.replace(/[^0-9]/g, '');
+	    if (!!decimalOK)
+		numberStr = numberStr.replace(/[^0-9\.]/g, '');
+	    else
+		numberStr = numberStr.replace(/[^0-9]/g, '');
 	}
 	return(numberStr);
     },
@@ -95,7 +98,7 @@ const common = module.exports = {
     },
 
 
-    //number can be a number or a string, with or without '0x'
+    //number can be a BN, number or a string, with or without '0x'
     //Hex256 string will be '0x' followed by 64 hex digits
     numberToHex256: function(number) {
 	if (typeof(number) === 'number')
@@ -236,8 +239,8 @@ const common = module.exports = {
 
     setIndexedFlag: function(prefix, index, flag) {
 	//javascript bit operations are 32 bit
-	const wordIdx = Math.floor(index / 32);
-	const bitIdx = index % 32;
+	const wordIdx = Math.floor(index / 31);
+	const bitIdx = index % 31;
 	const wordIdxStr = '0x' + wordIdx.toString(16)
 	let wordStr = localStorage[prefix + '-' + wordIdxStr];
 	let word = (!!wordStr) ? parseInt(wordStr) : 0;
@@ -251,8 +254,8 @@ const common = module.exports = {
     },
 
     chkIndexedFlag: function(prefix, index) {
-	const wordIdx = Math.floor(index / 32);
-	const bitIdx = index % 32;
+	const wordIdx = Math.floor(index / 31);
+	const bitIdx = index % 31;
 	const wordIdxStr = '0x' + wordIdx.toString(16)
 	const wordStr = localStorage[prefix + '-' + wordIdxStr];
 	console.log('chkIndexedFlag: localStorage[' + prefix + '-' + wordIdxStr + '] = ' + wordStr);
@@ -265,10 +268,11 @@ const common = module.exports = {
     //find the index of the first flag that is z or nz, starting with begIndex, goin forward or backwards
     //to endIndex. returns -1 if no flag found.
     findIndexedFlag: function(prefix, begIndex, endIndex, nz) {
-	const allOnes = 0xffffffff;
+	console.log('findIndexedFlag: begIndex = ' + begIndex + ', endIndex = ' + endIndex + ', nz = ' + nz);
+	const allOnes = 0x7fffffff;
 	const increment = (endIndex > begIndex) ? 1 : -1;
-	let wordIdx = Math.floor(begIndex / 32);
-	let bitIdx = begIndex % 32;
+	let wordIdx = Math.floor(begIndex / 31);
+	let bitIdx = begIndex % 31;
 	do {
 	    const wordIdxStr = '0x' + wordIdx.toString(16)
 	    const wordStr = localStorage[prefix + '-' + wordIdxStr];
@@ -278,21 +282,41 @@ const common = module.exports = {
 		do {
 		    if ((!!nz && (word & (1 << bitIdx)) != 0) ||
 			( !nz && (word & (1 << bitIdx)) == 0) ) {
-			const foundIdx = wordIdx * 32 + bitIdx;
+			const foundIdx = wordIdx * 31 + bitIdx;
 			console.log('findFlag: foundIdx = ' + foundIdx);
 			return((increment > 0 && foundIdx <= endIndex) ||
 			       (increment < 0 && foundIdx >= endIndex) ? foundIdx : -1);
 		    }
 		    bitIdx += increment;
-		} while ((increment > 0 && bitIdx < 32) || (increment < 0 && bitIdx >= 0));
+		} while ((increment > 0 && bitIdx < 31) || (increment < 0 && bitIdx >= 0));
 		//first time through it's possible to fall out, if the nz bit was
 		//lt the start bitIdx
 	    }
-	    bitIdx = (increment > 0) ? 0 : 47;
+	    bitIdx = (increment > 0) ? 0 : 30;
 	    wordIdx += increment;
-	} while ((increment > 0 &&  wordIdx      * 32 < endIndex) ||
-		 (increment < 0 && (wordIdx + 1) * 32 > endIndex));
+	} while ((increment > 0 &&  wordIdx      * 31 < endIndex) ||
+		 (increment < 0 && (wordIdx + 1) * 31 > endIndex));
 	return(-1);
+    },
+
+
+    // index,value can be numbers or BNs
+    setIndexedBN: function(prefix, index, value) {
+	const idxBN = common.numberToBN(index);
+	const valBN = common.numberToBN(value);
+	const valStr = '0x' + valBN.toString(16);
+	const idxStr = prefix + '-' + '0x' + idxBN.toString(16);
+	localStorage[idxStr] = valStr;
+	console.log('setIndexedHex256: localStorage[' + idxStr + '] = ' + valStr);
+    },
+
+    // index,value can be numbers or BNs
+    getIndexedBN: function(prefix, index) {
+	const idxBN = common.numberToBN(index);
+	const idxStr = prefix + '-' + '0x' + idxBN.toString(16);
+	const valStr = localStorage[idxStr];
+	const value = !!valStr ? valStr : '0';
+	return(common.numberToBN(value));
     },
 
 
@@ -375,15 +399,21 @@ const common = module.exports = {
     waitForTXID: function(err, txid, desc, continueFcn, txStatusHost, cb) {
 	console.log('waitForTXID');
 	const statusDiv = common.replaceElemClassFromTo('statusDiv', 'statusDivHide', 'statusDivShow', true);
-	const leftDiv = document.createElement("div");
-	leftDiv.className = 'visibleIB';
-	statusDiv.appendChild(leftDiv);
-	const rightDiv = document.createElement("div");
-	rightDiv.className = 'visibleIB';
-	statusDiv.appendChild(rightDiv);
+	const statusCtrDiv = document.createElement("div");
+	statusCtrDiv.id = 'statusCtrDiv';
+	statusCtrDiv.className = 'visibleB';
+	statusDiv.appendChild(statusCtrDiv);
+	const viewLinkDiv = document.createElement("div");
+	viewLinkDiv.id = 'statusViewLinkDiv';
+	viewLinkDiv.className = 'visibleB';
+	statusDiv.appendChild(viewLinkDiv);
+	const continueDiv = document.createElement("div");
+	continueDiv.id = 'statusContinueDiv';
+	continueDiv.className = 'visibleB';
+	statusDiv.appendChild(continueDiv);
 	let statusCtr = 0;
 	const statusText = document.createTextNode('No status yet...');
-	leftDiv.appendChild(statusText);
+	statusCtrDiv.appendChild(document.createElement("p")).appendChild(statusText);
 	if (!!err || !txid) {
 	    if (!err)
 		err = 'No transaction hash was generated.';
@@ -394,7 +424,7 @@ const common = module.exports = {
 		reloadLink.href = 'javascript:null;';
 		reloadLink.innerHTML = "<h2>Continue</h2>";
 		reloadLink.disabled = false;
-		rightDiv.appendChild(reloadLink);
+		continueDiv.appendChild(reloadLink);
 	    }
 	    if (!!cb)
 		cb(err, null);
@@ -402,16 +432,19 @@ const common = module.exports = {
 	}
 	//
 	const viewTxLink = document.createElement('a');
+	viewTxLink.id = 'statusViewLink';
 	viewTxLink.href = 'https://' + txStatusHost + '/tx/' + txid;
 	viewTxLink.innerHTML = "<h2>View transaction</h2>";
 	viewTxLink.target = '_blank';
 	viewTxLink.disabled = false;
-	leftDiv.appendChild(viewTxLink);
+	viewLinkDiv.appendChild(viewTxLink);
 	//
 	const noteDiv = document.createElement("div");
-	noteDiv.className = 'hidden';
-	const noteText = document.createTextNode('Note: it may take several minutes for changes to be reflected...');
-	noteDiv.appendChild(noteText);
+	noteDiv.className = 'visibleB';
+	noteDiv.id = 'statusNoteDiv';
+	const noteText = document.createTextNode('Note: You cannot continue until this transaction completes... ' +
+						 'If you speed up the transaction via MetaMask, then you will need to reload the page (after the transaction completes).');
+	noteDiv.appendChild(document.createElement("p")).appendChild(noteText);
 	statusDiv.appendChild(noteDiv);
 	//
 	//cleared in handleUnlockedMetaMask, after the user clicks 'continue'
@@ -428,6 +461,7 @@ const common = module.exports = {
 			    err = "Transaction Failed with REVERT opcode";
 			statusText.textContent = (!!err) ? 'Error in ' + desc + ' transaction: ' + err : desc + ' transaction succeeded!';
 			console.log('transaction is in block ' + (!!receipt ? receipt.blockNumber : 'err'));
+			noteText.textContent = 'Note: it may take several minutes for changes to be reflected...';
 			noteDiv.className = 'visibleB';
 			clearInterval(timer);
 			//
@@ -437,7 +471,7 @@ const common = module.exports = {
 			    reloadLink.href = 'javascript:null;';
 			    reloadLink.innerHTML = "<h2>Continue</h2>";
 			    reloadLink.disabled = false;
-			    rightDiv.appendChild(reloadLink);
+			    continueDiv.appendChild(reloadLink);
 			}
 			if (!!cb)
 			    cb(err, receipt);
@@ -517,18 +551,24 @@ const common = module.exports = {
 
 
     //state = 'Disabled' | 'Enabled' | 'Selected'
-    setMenuButtonState: function(buttonID, state) {
-	var button = document.getElementById(buttonID);
+    setButtonState: function(baseName, buttonID, state) {
+	const button = document.getElementById(buttonID);
 	button.disabled = (state == 'Enabled') ? false : true;
-	var newClassName = 'menuBarButton' + state;
-	if (button.className.indexOf('menuBarButtonDisabled') >= 0)
-	    button.className = (button.className).replace('menuBarButtonDisabled', newClassName);
-	else if (button.className.indexOf('menuBarButtonEnabled') >= 0)
-	    button.className = (button.className).replace('menuBarButtonEnabled', newClassName);
-	else if (button.className.indexOf('menuBarButtonSelected') >= 0)
-	    button.className = (button.className).replace('menuBarButtonSelected', newClassName);
+	const newClassName = baseName + state;
+	if (button.className.indexOf(baseName + 'Disabled') >= 0)
+	    button.className = (button.className).replace(baseName + 'Disabled', newClassName);
+	else if (button.className.indexOf(baseName + 'Enabled') >= 0)
+	    button.className = (button.className).replace(baseName + 'Enabled', newClassName);
+	else if (button.className.indexOf(baseName + 'Selected') >= 0)
+	    button.className = (button.className).replace(baseName + 'Selected', newClassName);
 	else
-	    button.className = (button.className).replace('menuBarButton', newClassName);
+	    button.className = (button.className).replace(baseName, newClassName);
+    },
+
+
+    //state = 'Disabled' | 'Enabled' | 'Selected'
+    setMenuButtonState: function(buttonID, state) {
+	common.setButtonState('menuBarButton', buttonID, state);
     },
 
 
@@ -558,5 +598,69 @@ const common = module.exports = {
 	return(elem);
     },
 
+    /** Function that count occurrences of a substring in a string;
+     * @param {String} str                  The string
+     * @param {String} subStr               The sub string to search for
+     * @param {Boolean} [allowOverlapping]  Optional. (Default:false)
+     *
+     * @author Vitim.us https://gist.github.com/victornpb/7736865
+     * @see Unit Test https://jsfiddle.net/Victornpb/5axuh96u/
+     * @see http://stackoverflow.com/questions/4009756/how-to-count-string-occurrence-in-string/7924240#7924240
+     */
+    occurrences: function(str, subStr, allowOverlapping) {
+	str += "";
+	subStr += "";
+	if (subStr.length <= 0)
+	    return (str.length + 1);
+	let n = 0;
+	let pos = 0;
+	let step = allowOverlapping ? 1 : subStr.length;
+	while (true) {
+            pos = str.indexOf(subStr, pos);
+            if (pos >= 0) {
+		++n;
+		pos += step;
+            } else break;
+	}
+	return n;
+    },
+
+
+    isOverflown: function(elem) {
+	return elem.scrollHeight > elem.clientHeight || elem.scrollWidth > elem.clientWidth;
+    },
+
+
+    // returns true if content was abbreviated
+    abbreviateElemContent: function(elem, str) {
+	elem.textContent = str;
+	if (common.isOverflown(elem)) {
+	    let limit = str.length - 4;
+	    while (common.isOverflown(elem) && limit >= 0)
+		elem.textContent = str.substring(0, limit--) + '...';
+	    return true;
+	}
+	return false;
+    },
+
+    //
+    // abbreviateAddrForEns
+    // helper for handleUnlockedMetaMask
+    //
+    abbreviateAddrForEns: function(addr, ensName, nominalEnsLength) {
+	let addrNumericStr = addr;
+	if (!!ensName && ensName.length >= nominalEnsLength) {
+	    console.log('abbreviateAddrForEns: ensName = ' + ensName);
+	    // normal length of addr is '0x' + 40 chars. field can fit '(0x' + 40 + ') ' + nominalEnsLength ens
+	    // or replace addr chars with XXXX...XXXX
+	    const noAddrChars = Math.max( 40 - (((ensName.length - nominalEnsLength) + 3 + 1) & 0xfffe), 6);
+	    const cut = 40 - noAddrChars;
+	    console.log('abbreviateAddrForEns: ensName.length = ' + ensName.length + ', cut = ' + cut);
+	    const remain2 = (40 - cut) / 2;
+	    console.log('abbreviateAddrForEns: remain2 = ' + remain2);
+	    addrNumericStr = addr.substring(0, 2 + remain2) + '...' + addr.substring(2 + 40 - remain2);
+	}
+	return(ensName + ' (' + addrNumericStr + ')');
+    },
 
 };

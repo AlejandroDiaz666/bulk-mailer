@@ -21,9 +21,22 @@
     </div>
     <div id="waitIcon">
     </div>
+    <div id="noteDialogDiv" class="hidden noteDialogSmall">
+      <p id="noteDialogIntro">
+      </p>
+      <p id="noteDialogNote">
+      </p>
+      <button id="noteDialogOkButton" type="button">OK</button>
+    </div>
+    <div id="sendDialogDiv" class="hidden">
+      <p>You are about to send a message to the indicated recipients. Click Send to proceed</p>
+      <button id="sendDialogCancelButton" type="button">Cancel</button>
+      <button id="sendDialogOkButton" type="button">Send</button>
+    </div>
+    <div id="statusDiv" class="finalresultstable statusDivHide"></div>
     <div id="privateKeyDiv" class="hidden">
       <h3>Please Enter your Private Key</h3>
-      <p>In order to sign multiple messages -- without waiting for a seperate MetaMask signature for each message -- You need to provide a private key.</br>
+      <p>In order to sign multiple messages -- without waiting for a separate MetaMask signature for each message -- You need to provide a private key.</br>
 	Note that the private key <i>must</i> be the key for the currently selected MetaMask account.</p>
       <p>Note: we never transmit or save your private key. We only use your key to confirm send-message transactions.</p>
       <input id="privateKeyInput" type="text" class="modalInput" placeholder="Enter the private key for your acct"/>
@@ -91,19 +104,20 @@
       </span>
       <div id="tabularArea">
 	<div id="networkAreaDiv">
-	  <textarea id="networkArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	  <textarea id="networkArea" rows="1" cols="62" readonly="readonly">&nbsp;</textarea>
 	</div>
-	<div id="accountDiv">
-	  <textarea id="accountArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	<div id="accountAreaDiv" class="tooltip">
+	  <textarea id="accountArea" rows="1" cols="62" readonly="readonly">&nbsp;</textarea>
+	  <span id="accountAreaFull" class="tooltipText"></span>
 	</div>
 	<div id="balanceAreaDiv">
-	  <textarea id="balanceArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	  <textarea id="balanceArea" rows="1" cols="62" readonly="readonly">&nbsp;</textarea>
 	</div>
 	<div id="totalReceivedAreaDiv">
-	  <textarea id="totalReceivedArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	  <textarea id="totalReceivedArea" rows="1" cols="62" readonly="readonly">&nbsp;</textarea>
 	</div>
 	<div id="feeBalanceAreaDiv">
-	  <textarea id="feeBalanceArea" rows="1" cols="55" readonly="readonly">&nbsp;</textarea>
+	  <textarea id="feeBalanceArea" rows="1" cols="62" readonly="readonly">&nbsp;</textarea>
 	</div>
       </div>
       <!-- options panel -->
@@ -116,6 +130,36 @@
 	    <input id="marysThemeButton" type="radio" name="themeSelectorInput" value="marys-style">Mary&apos;s theme</input><br/>
 	    <input id="wandasThemeButton" type="radio" name="themeSelectorInput" value="wandas-style">Wanda&apos;s theme</input><br/>
 	    <input id="relaxThemeButton" type="radio" name="themeSelectorInput" value="relax-style">Relax theme</input><br/>
+	    </p>
+	  </span>
+	  <span id="storeMsgsSpan">
+	    <p>Select message storage:<br/>
+	      <select id="storeMsgsSelect">
+		<option value="ethereum">Ethereum event logs (persistent)</option>
+		<option value="swarm">Swarm (persistence not guaranteed)</option>
+		<option value="auto">Swarm for messages with attachments</option>
+	      </select>
+	    </p>
+	  </span>
+	  <button id="swarmGatewayViewButton" type="button" class="hidden">View</button>
+	  <div id="swarmGatewayDiv" class="hidden">
+	    <textarea id="swarmGatewayArea" rows="1" cols="30" wrap="off"
+		      placeholder="enter node address"></textarea>
+	    <button id="swarmGatewayDoButton" type="button">Set Swarm gateway</button>
+	  </div>
+	  <span id="swarmTimeoutSpan">
+	    <p>Timeout for downloading from Swarm:<br/>
+	      <select id="swarmTimeoutSelect">
+		<option value="10000">10 seconds</option>
+		<option value="9000">9 seconds</option>
+		<option value="8000">8 seconds</option>
+		<option value="7000">7 seconds</option>
+		<option value="6000">6 seconds</option>
+		<option value="5000">5 seconds</option>
+		<option value="4000">4 seconds</option>
+		<option value="3000">3 seconds</option>
+		<option value="2500">2.5 seconds</option>
+	      </select>
 	    </p>
 	  </span>
 	  <span id="viewSrcSpan">
@@ -210,6 +254,5 @@
       </form>
     </div>
     <p>&nbsp;</p>
-    <div id="statusDiv" class="finalresultstable statusDivHide"></div>
   </body>
 </html>

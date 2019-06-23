@@ -1,4 +1,4 @@
-# Bulk Mailer for Turms Anonymous Message Transpoty
+# Bulk Mailer for Turms Anonymous Message Transport
 
 ## Introduction
 
